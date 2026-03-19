@@ -1,15 +1,27 @@
 {
+  // tsconfig.json 是 TypeScript 的配置文件，定义了编译器选项和包含的文件
+  // 通过 compilerOptions 配置编译器的行为，例如目标 JavaScript 版本、使用的库、模块系统等
   "compilerOptions": {
+    // 指定编译后的 JavaScript 版本为 ES2022，使用 ES2022 的特性和语法
     "target": "ES2022",
+    // 指定使用的库，包括 ES2022 的标准库和 DOM 库，提供相应的类型定义
     "lib": ["ES2022", "DOM"],
+    // 指定模块系统为 ESNext，使用最新的 ECMAScript 模块特性
     "module": "ESNext",
+    // 指定模块解析策略为 Bundler，适用于现代打包工具的模块解析方式
     "moduleResolution": "Bundler",
+    // 启用严格类型检查，增强代码的类型安全性，捕获更多潜在的错误
     "strict": true,
+    // 允许在导入模块时省略文件扩展名，简化导入语句
     "skipLibCheck": true,
+    // 保留 JSX 语法，适用于使用 React 或其他支持 JSX 的库的项目
     "jsx": "preserve",
+    // 启用对未定义索引访问的检查，防止访问不存在的属性时出现错误
     "noUncheckedIndexedAccess": true,
+    // 指定类型定义文件的路径，包含全局类型声明和模块类型声明
     "types": ["node", "webextension-polyfill"]
   },
+  // include 配置指定了要包含在编译中的文件和目录，这些文件将被 TypeScript 编译器处理
   "include": [
     "entrypoints",
     "src",
