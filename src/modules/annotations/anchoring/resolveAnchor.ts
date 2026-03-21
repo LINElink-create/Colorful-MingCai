@@ -124,7 +124,40 @@ const scoreQuoteCandidate = (normalizedText: string, annotation: AnnotationRecor
   return score
 }
 
-const locateSegmentPosition = (segments: TextNodeSegment[], rawOffset: number) => {
+// const locateSegmentPosition = (segments: TextNodeSegment[], rawOffset: number) => {
+//   for (const segment of segments) {
+//     if (rawOffset < segment.start) {
+//       continue
+//     }
+
+//     if (rawOffset < segment.end) {
+//       return {
+//         node: segment.node,
+//         offset: rawOffset - segment.start
+//       }
+//     }
+
+//     if (rawOffset === segment.end) {
+//       return {
+//         node: segment.node,
+//         offset: segment.end - segment.start
+//       }
+//     }
+//   }
+
+//   const lastSegment = segments[segments.length - 1]
+//   if (!lastSegment) {
+//     return null
+//   }
+
+//   return {
+//     node: lastSegment.node,
+//     offset: lastSegment.end - lastSegment.start
+//   }
+// }
+
+// locateSegmentPosition 已经被 locateStartPosition 和 locateEndPosition 分拆，以更细粒度地处理边界情况。
+const locateStartPosition = (segments: TextNodeSegment[], rawOffset: number) => {
   for (const segment of segments) {
     if (rawOffset < segment.start) {
       continue
@@ -137,6 +170,38 @@ const locateSegmentPosition = (segments: TextNodeSegment[], rawOffset: number) =
       }
     }
 
+    // start 边界命中 segment.end 时，应该交给下一个 segment 的 start
+    if (rawOffset === segment.end) {
+      continue
+    }
+  }
+
+  const lastSegment = segments[segments.length - 1]
+  if (!lastSegment) {
+    return null
+  }
+
+  return {
+    node: lastSegment.node,
+    offset: lastSegment.end - lastSegment.start
+  }
+}
+
+// end 边界命中 segment.end 时，落在当前节点末尾是合理的
+const locateEndPosition = (segments: TextNodeSegment[], rawOffset: number) => {
+  for (const segment of segments) {
+    if (rawOffset < segment.start) {
+      continue
+    }
+
+    if (rawOffset < segment.end) {
+      return {
+        node: segment.node,
+        offset: rawOffset - segment.start
+      }
+    }
+
+    // end 边界命中 segment.end 时，落在当前节点末尾是合理的
     if (rawOffset === segment.end) {
       return {
         node: segment.node,
@@ -156,9 +221,10 @@ const locateSegmentPosition = (segments: TextNodeSegment[], rawOffset: number) =
   }
 }
 
+
 const createRangeFromRawOffsets = (segments: TextNodeSegment[], rawStart: number, rawEnd: number) => {
-  const startPosition = locateSegmentPosition(segments, rawStart)
-  const endPosition = locateSegmentPosition(segments, rawEnd)
+  const startPosition = locateStartPosition(segments, rawStart)
+  const endPosition = locateEndPosition(segments, rawEnd)
 
   if (!startPosition || !endPosition) {
     return null
@@ -169,6 +235,17 @@ const createRangeFromRawOffsets = (segments: TextNodeSegment[], rawStart: number
   try {
     range.setStart(startPosition.node, startPosition.offset)
     range.setEnd(endPosition.node, endPosition.offset)
+
+console.log('[resolved-range]', {
+    rawStart,
+    rawEnd,
+    startNode: startPosition.node.textContent,
+    startOffset: startPosition.offset,
+    endNode: endPosition.node.textContent,
+    endOffset: endPosition.offset,
+    text: range.toString()
+  })
+
     return range.toString().trim() ? range : null
   } catch {
     return null
