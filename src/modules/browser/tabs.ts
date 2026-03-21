@@ -12,3 +12,8 @@ export const getActivePageInfo = async (): Promise<ActivePageInfo> => {
     url: tab?.url ?? ''
   }
 }
+
+// 重新加载指定标签页，用于让页面在清空当前页高亮后立即按最新存储状态重绘。
+export const reloadTabById = async (tabId: number) => {
+  await browser.tabs.reload(tabId)
+}

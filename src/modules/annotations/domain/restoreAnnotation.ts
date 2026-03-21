@@ -1,8 +1,12 @@
 import type { AnnotationRecord } from '../../../shared/types/annotation'
 import { resolveAnnotationRange } from '../anchoring/resolveAnchor'
-import { renderAnnotationRange } from '../rendering/highlightRenderer'
+import { isAnnotationRendered, renderAnnotationRange } from '../rendering/highlightRenderer'
 
 export const restoreAnnotation = (annotation: AnnotationRecord) => {
+  if (isAnnotationRendered(annotation.id)) {
+    return true
+  }
+
   // 根据 annotation 中保存的锚点信息还原为页面上的 Range
   const range = resolveAnnotationRange(annotation)
 

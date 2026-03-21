@@ -13,7 +13,10 @@ const {
   errorMessage,
   pageInfo,
   annotations,
+  isClearConfirmOpen,
   refresh,
+  requestClearCurrentPage,
+  cancelClearCurrentPage,
   clearCurrentPage,
   exportAnnotations,
   importAnnotations
@@ -56,14 +59,45 @@ const {
 
     <AnnotationList :annotations="annotations" :is-loading="isLoading" />
 
-    <button class="danger-button" :disabled="isLoading || annotations.length === 0" @click="clearCurrentPage">
+    <button class="danger-button" :disabled="isLoading || annotations.length === 0" @click="requestClearCurrentPage">
       清空当前页高亮
     </button>
+
+    <div v-if="isClearConfirmOpen" class="confirm-overlay" @click="cancelClearCurrentPage">
+      <section class="confirm-dialog" @click.stop>
+        <p class="confirm-badge">需要确认的操作</p>
+        <h2>确认清空当前页高亮？</h2>
+        <p class="confirm-description">
+          这会移除当前页面已保存的全部高亮，并自动刷新页面以应用最新状态。
+        </p>
+
+        <div class="confirm-meta">
+          <p>
+            <span>页面</span>
+            <strong>{{ pageInfo.title || pageInfo.url || '未识别页面' }}</strong>
+          </p>
+          <p>
+            <span>高亮数量</span>
+            <strong>{{ annotations.length }}</strong>
+          </p>
+        </div>
+
+        <div class="confirm-actions">
+          <button class="secondary-button" :disabled="isLoading" @click="cancelClearCurrentPage">
+            取消
+          </button>
+          <button class="confirm-button" :disabled="isLoading" @click="clearCurrentPage">
+            {{ isLoading ? '清空中...' : '确认清空' }}
+          </button>
+        </div>
+      </section>
+    </div>
   </main>
 </template>
 
 <style scoped>
 .popup-shell {
+  position: relative;
   width: 360px;
   min-height: 520px;
   padding: 16px;
@@ -100,12 +134,15 @@ const {
 }
 
 .ghost-button,
-.danger-button {
+.danger-button,
+.secondary-button,
+.confirm-button {
   border: 0;
   border-radius: 12px;
   padding: 10px 14px;
   cursor: pointer;
   font: inherit;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
 .ghost-button {
@@ -116,6 +153,101 @@ const {
   width: 100%;
   background: #2b2118;
   color: #fff8e8;
+}
+
+.secondary-button {
+  background: #f5ecd8;
+  color: #574537;
+}
+
+.confirm-button {
+  background: linear-gradient(135deg, #b23a1d 0%, #7d1c10 100%);
+  color: #fff7f0;
+  box-shadow: 0 10px 24px rgba(125, 28, 16, 0.24);
+}
+
+.ghost-button:hover,
+.danger-button:hover,
+.secondary-button:hover,
+.confirm-button:hover {
+  transform: translateY(-1px);
+}
+
+.confirm-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(43, 33, 24, 0.3);
+  backdrop-filter: blur(6px);
+}
+
+.confirm-dialog {
+  width: 100%;
+  padding: 18px;
+  border: 1px solid rgba(125, 28, 16, 0.14);
+  border-radius: 20px;
+  background: linear-gradient(180deg, #fff8ef 0%, #fff2e4 100%);
+  box-shadow: 0 22px 44px rgba(79, 44, 18, 0.18);
+}
+
+.confirm-badge {
+  display: inline-flex;
+  margin: 0 0 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fce1d7;
+  color: #9a321b;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.confirm-dialog h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.confirm-description {
+  margin: 10px 0 14px;
+  color: #6d5646;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.confirm-meta {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.confirm-meta p {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.confirm-meta span {
+  color: #8b6f5d;
+  font-size: 12px;
+}
+
+.confirm-meta strong {
+  color: #2b2118;
+  font-size: 13px;
+  word-break: break-word;
+}
+
+.confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 
 .error-message {

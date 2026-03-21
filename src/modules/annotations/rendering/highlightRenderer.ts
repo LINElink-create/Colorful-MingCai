@@ -1,16 +1,37 @@
 import { ensureHighlightStyle } from './highlightStyle'
 
+const unwrapMarkElement = (element: Element) => {
+  const parent = element.parentNode
+
+  // 把 mark 内部的文本片段重新“拆回”父节点，然后移除包裹 mark。
+  while (element.firstChild) {
+    parent?.insertBefore(element.firstChild, element)
+  }
+
+  parent?.removeChild(element)
+}
+
+// 检查页面上是否已经渲染了指定 ID 的高亮，避免重复渲染。
+export const isAnnotationRendered = (annotationId: string) => {
+  return document.querySelector(`mark[data-mingcai-id="${annotationId}"]`) !== null
+}
+
+// 清除页面上所有已渲染的高亮（但不删除存储中的数据），例如在导入新数据前或切换页面时调用。
+export const clearAllRenderedAnnotations = () => {
+  document
+    .querySelectorAll('mark[data-mingcai-annotation="true"]')
+    .forEach((element) => {
+      unwrapMarkElement(element)
+    })
+}
+
 // 移除已经渲染到 DOM 中的高亮节点。
 // 做法是把 mark 内部的文本片段重新“拆回”父节点，然后移除包裹 mark。
 export const removeRenderedAnnotation = (annotationId: string) => {
   document
     .querySelectorAll(`mark[data-mingcai-id="${annotationId}"]`)
     .forEach((element) => {
-      const parent = element.parentNode
-      while (element.firstChild) {
-        parent?.insertBefore(element.firstChild, element)
-      }
-      parent?.removeChild(element)
+      unwrapMarkElement(element)
     })
 }
 
@@ -18,6 +39,10 @@ export const removeRenderedAnnotation = (annotationId: string) => {
 // 这里采用 extractContents + insertNode 的方式，便于后续按 annotationId 精确找到对应的高亮片段。
 export const renderAnnotationRange = (range: Range, annotationId: string, color = 'yellow') => {
   ensureHighlightStyle()
+
+  if (isAnnotationRendered(annotationId)) {
+    return
+  }
 
   const mark = document.createElement('mark')
   mark.dataset.mingcaiAnnotation = 'true'
