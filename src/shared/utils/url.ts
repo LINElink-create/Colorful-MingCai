@@ -1,3 +1,4 @@
+// 这个工具函数用于标准化 URL，主要是移除 URL 中的 hash 部分。
 export const normalizeUrlForStorage = (url: string) => {
   try {
     const parsedUrl = new URL(url)
@@ -8,3 +9,4 @@ export const normalizeUrlForStorage = (url: string) => {
     return url
   }
 }
+
