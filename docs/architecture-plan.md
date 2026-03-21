@@ -5,14 +5,14 @@
 
 # 网页划词高亮 + 导出插件工程蓝图
 
-> 如何阅读：文档自上而下先说明目标与约束，再给出目录与模块拆分。实现时请以 `src/modules` 的领域为主线。
+> 如何阅读：本文档已经按当前代码状态更新。它既保留架构设计意图，也明确记录现在已经落地的目录、入口、消息和交互。
 
 ## 1. 目标边界
 
 - 首发浏览器：Chrome、Edge
 - 扩展规范：Manifest V3
 - 开发框架：WXT + Vue 3 + TypeScript
-- MVP 核心：划词高亮、持久化恢复、JSON/Markdown 导出导入
+- MVP 核心：划词高亮、多颜色、持久化恢复、JSON/Markdown 导出导入、历史总览
 - 数据范围：本地存储，手动导入导出
 
 ## 2. 推荐目录结构
@@ -30,9 +30,14 @@
     icon-128.png
   docs/
     architecture-plan.md
+    source-reading-guide.md
   entrypoints/
     background.ts
     content.ts
+    history/
+      index.html
+      main.ts
+      App.vue
     popup/
       index.html
       main.ts
@@ -57,21 +62,20 @@
         time.ts
         url.ts
         text.ts
+        history/
+          useHistoryOverview.ts
     modules/
       annotations/
         domain/
           createAnnotation.ts
           restoreAnnotation.ts
-          removeAnnotation.ts
         anchoring/
           serializeSelection.ts
-          resolveAnchor.ts
-          domPath.ts
           textQuote.ts
         rendering/
           highlightRenderer.ts
-          highlightStyle.ts
-          rangeNormalizer.ts
+        anchoring/
+          serializeSelection.spec.ts
         repository/
           annotationRepository.ts
         mappers/
@@ -121,6 +125,7 @@
 - `background.ts`：注册右键菜单、接收消息、触发下载
 - `content.ts`：页面注入、监听选区、恢复高亮
 - `popup/`：弹窗 UI 和用户操作入口
+- `history/`：扩展内部独立页面，用于查看所有历史摘录
 
 ### src/shared
 
@@ -144,6 +149,7 @@
 放面向具体入口或交互场景的编排逻辑。
 
 - `popup/`：弹窗状态组织
+- `history/`：历史总览页状态组织
 - `content/`：页面行为编排
 - `background/`：后台流程编排
 
@@ -311,11 +317,12 @@ export type PageAnnotationBucket = {
 
 ## 7. 消息协议建议
 
-建议统一以下消息：
+当前已经使用的核心消息包括：
 
 - `GET_CURRENT_PAGE_ANNOTATIONS`
 - `CREATE_ANNOTATION_FROM_SELECTION`
-- `REMOVE_ANNOTATION`
+- `REMOVE_ANNOTATION_BY_ID`
+- `REMOVE_ANNOTATIONS_FROM_SELECTION`
 - `CLEAR_CURRENT_PAGE_ANNOTATIONS`
 - `EXPORT_ANNOTATIONS`
 - `IMPORT_ANNOTATIONS`
@@ -332,29 +339,51 @@ export type RuntimeMessage<TType extends string, TPayload> = {
 
 ## 8. Popup 组件建议
 
-首版 Popup 不要做重 UI，重点是操作闭环。
+当前 Popup 仍然保持轻量，但已经承担“当前页控制台”的角色。
 
 建议组件：
 
 - `PageSummaryCard.vue`：显示当前页面标题、高亮数量、最后更新时间
 - `ExportActions.vue`：JSON/Markdown 导出按钮
 - `ImportActions.vue`：导入文件按钮与导入模式选择
-- `AnnotationList.vue`：当前页高亮列表
+- `AnnotationList.vue`：当前页高亮列表与单条删除入口
 
-首版 App 页面结构：
+当前 App 页面结构：
 
 1. 当前页摘要
-2. 创建/导出/导入操作区
-3. 当前页高亮列表
-4. 清空当前页按钮
+2. 导出/导入操作区
+3. 历史总览入口
+4. 当前页高亮列表
+5. 单条删除确认弹层
+6. 清空当前页按钮与清空确认弹层
 
-## 9. 代码约束
+## 9. 历史总览页建议
+
+历史总览页已经作为独立 entrypoint 落地，而不是塞进 Popup 内部。
+
+这样做的理由：
+
+- Popup 空间有限，不适合承载全局管理视图
+- 独立页面更适合展示分组列表、搜索和后续扩展
+- 历史页可以复用仓储层和 tabs 适配层，而不直接依赖当前活动 tab
+
+当前历史页承担的职责：
+
+- 读取全部 `PageAnnotationBucket`
+- 按页面分组展示摘录
+- 展示摘录颜色和时间
+- 打开原网页
+- 删除单条历史标记
+- 监听 storage 变化自动同步列表
+
+## 10. 代码约束
 
 ### 必须遵守
 
 - 浏览器 API 必须经过适配层或消息层，不要在 UI 组件里直接散落调用
 - Content Script 不直接处理下载逻辑
 - Popup 不直接操作 DOM 选区
+- History 页面不直接操作 DOM 高亮，而是通过 tabs + runtime message 去同步已打开网页
 - 领域对象与 UI 展示对象分离
 - 导出逻辑必须可单元测试，不依赖浏览器环境
 
@@ -365,7 +394,32 @@ export type RuntimeMessage<TType extends string, TPayload> = {
 - 避免在多个入口重复声明消息名和存储 key
 - 避免以 URL 纯字符串作为唯一恢复依据
 
-## 10. 开发顺序
+## 11. 当前主链路
+
+### 链路 A：页面内创建高亮
+
+1. `observeSelection.ts` 监听用户划词并展示颜色浮层
+2. `content.ts` 收到颜色选择后调用 `routeRuntimeMessage`
+3. `messageRouter.ts` 读取 Selection 并创建 annotation
+4. `highlightRenderer.ts` 将 Range 渲染成 `mark`
+5. `annotationRepository.ts` 将 annotation 落到对应页面 bucket
+
+### 链路 B：Popup 删除单条高亮
+
+1. `AnnotationList.vue` 发出 remove 事件
+2. `usePopupState.ts` 先打开确认弹层
+3. 确认后向当前 tab 发送 `REMOVE_ANNOTATION_BY_ID`
+4. `messageRouter.ts` 在 content 上下文中移除 DOM 高亮并更新仓储
+5. `browser.storage.onChanged` 让 Popup 列表自动同步
+
+### 链路 C：历史总览删除高亮
+
+1. `useHistoryOverview.ts` 直接修改仓储中的 bucket
+2. 再通过 `findTabIdsByPageUrl` 找到已打开的对应网页
+3. 向这些 tab 广播 `REMOVE_ANNOTATION_BY_ID`
+4. 页面中的旧高亮被同步移除
+
+## 12. 开发顺序
 
 ### Sprint 1：骨架与类型
 
@@ -389,26 +443,47 @@ export type RuntimeMessage<TType extends string, TPayload> = {
 - Markdown 导出
 - 导入并合并/覆盖
 
-### Sprint 4：边界与测试
+### Sprint 4：动态恢复与细节体验
 
 - 跨节点选区处理
 - 重复文本恢复处理
 - SPA 页面切换处理
+- Popup 单条删除与确认交互
+
+### Sprint 5：历史总览与测试
+
+- 历史总览页
+- 打开原网页
+- 从总览页删除高亮
 - 单元测试和 E2E 测试
 
-## 11. 未来扩展位
+## 13. 未来扩展位
 
 如果二期要继续扩展，建议预留：
 
-- 多颜色高亮
 - 标注备注
 - 页面级搜索
-- 全局管理页
+- Popup 与历史总览搜索
 - 标签系统
 - 云同步
 - Firefox 兼容层
 
-## 12. 最小初始化文件清单
+## 14. 当前与蓝图的差异说明
+
+以下能力已经从“蓝图”进入“已实现”：
+
+- 多颜色高亮
+- Popup 单条删除
+- 动态页面恢复增强
+- 历史总览页
+
+以下能力仍然属于下一阶段：
+
+- 更强的模糊恢复与多候选打分优化
+- 总览页搜索和筛选
+- 真实浏览器端到端测试
+
+## 15. 最小初始化文件清单
 
 如果你下一步要开始搭项目，建议先生成这些文件：
 

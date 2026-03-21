@@ -12,11 +12,26 @@ export const ensureHighlightStyle = () => {
   style.id = STYLE_ID
   style.textContent = `
     mark[data-mingcai-annotation="true"] {
-      background: #ffe37a;
       color: inherit;
       border-radius: 0.2em;
       padding: 0.05em 0.02em;
       box-decoration-break: clone;
+    }
+
+    mark[data-mingcai-color="yellow"] {
+      background: #ffe37a;
+    }
+
+    mark[data-mingcai-color="green"] {
+      background: #c9ef8b;
+    }
+
+    mark[data-mingcai-color="blue"] {
+      background: #9fd3ff;
+    }
+
+    mark[data-mingcai-color="pink"] {
+      background: #ffbfd3;
     }
   `
 

@@ -5,13 +5,17 @@ defineProps<{
   annotations: AnnotationRecord[]
   isLoading: boolean
 }>()
+
+const emit = defineEmits<{
+  remove: [annotationId: string]
+}>()
 </script>
 
 <!--
   说明：
   - 只负责展示传入的注释列表与加载/空状态占位
   - 不执行任何数据加载或变更操作，交由父组件控制
-  - 当前版本只显示 textQuote 和创建时间，后续可扩展颜色、备注、删除按钮等信息
+  - 当前版本点击 × 只发出“请求删除”事件，确认与真正删除逻辑仍由父组件处理
 -->
 
 <template>
@@ -25,6 +29,9 @@ defineProps<{
 
     <ul v-else class="annotation-list">
       <li v-for="annotation in annotations" :key="annotation.id">
+        <button class="remove-button" type="button" aria-label="删除当前高亮" @click="emit('remove', annotation.id)">
+          ×
+        </button>
         <p class="quote">{{ annotation.textQuote }}</p>
         <p class="meta">{{ new Date(annotation.createdAt).toLocaleString() }}</p>
       </li>
@@ -56,12 +63,35 @@ defineProps<{
 }
 
 .annotation-list li {
+  position: relative;
   padding: 10px;
   border-radius: 12px;
   background: #fff8e8;
 }
 
+.remove-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 999px;
+  background: #f3dccd;
+  color: #8b2c12;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.remove-button:hover {
+  background: #efc4b1;
+  transform: scale(1.04);
+}
+
 .quote {
+  padding-right: 28px;
   font-weight: 600;
 }
 

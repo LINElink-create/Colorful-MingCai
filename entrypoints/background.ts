@@ -22,16 +22,25 @@ export default defineBackground(() => {
 
   // 监听右键菜单点击事件
   browser.contextMenus.onClicked.addListener((info: { menuItemId?: string | number }, tab?: { id?: number }) => {
-    // 只处理高亮选择的菜单项，且必须有有效的 tab id
-    if (info.menuItemId !== MENU_IDS.highlightSelection || !tab?.id) {
+    if (!tab?.id) {
       return
     }
 
-    // 向指定 tab 发送创建标注的运行时消息（payload 包含高亮颜色）
-    void sendMessageToTab(tab.id, {
-      type: MESSAGE_TYPES.CREATE_ANNOTATION_FROM_SELECTION,
-      payload: { color: 'yellow' }
-    })
+    if (info.menuItemId === MENU_IDS.highlightSelection) {
+      // 向指定 tab 发送创建标注的运行时消息（payload 包含高亮颜色）
+      void sendMessageToTab(tab.id, {
+        type: MESSAGE_TYPES.CREATE_ANNOTATION_FROM_SELECTION,
+        payload: { color: 'yellow' }
+      })
+      return
+    }
+
+    if (info.menuItemId === MENU_IDS.removeHighlightSelection) {
+      void sendMessageToTab(tab.id, {
+        type: MESSAGE_TYPES.REMOVE_ANNOTATIONS_FROM_SELECTION,
+        payload: {}
+      })
+    }
   })
 
   // 统一接收来自 content/popup 的运行时消息，并交给路由器处理

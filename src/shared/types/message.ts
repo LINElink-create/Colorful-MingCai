@@ -14,6 +14,16 @@ export type RuntimeMessage =
       payload: { color?: AnnotationColor }
     }
   | {
+      // 在 content 端按 annotationId 删除单条高亮
+      type: 'REMOVE_ANNOTATION_BY_ID'
+      payload: { annotationId: string }
+    }
+  | {
+      // 在 content 端基于当前选区移除已经存在的高亮
+      type: 'REMOVE_ANNOTATIONS_FROM_SELECTION'
+      payload: Record<string, never>
+    }
+  | {
       // 清空指定页面的注释分桶
       type: 'CLEAR_CURRENT_PAGE_ANNOTATIONS'
       payload: { url: string }

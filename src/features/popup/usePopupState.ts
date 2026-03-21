@@ -1,10 +1,14 @@
-import { onMounted, ref } from 'vue'
+import browser from 'webextension-polyfill'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { EXPORT_FORMATS, type ExportFormat } from '../../shared/constants/exportFormats'
 import { MESSAGE_TYPES } from '../../shared/constants/messageTypes'
+import { STORAGE_KEYS } from '../../shared/constants/storageKeys'
 import type { AnnotationRecord } from '../../shared/types/annotation'
 import type { ActivePageInfo } from '../../shared/types/page'
-import { getActivePageInfo, reloadTabById } from '../../modules/browser/tabs'
+import type { RuntimeMessageResult } from '../../shared/types/message'
+import { getActivePageInfo, openExtensionPage, reloadTabById } from '../../modules/browser/tabs'
 import { sendMessageToBackground } from '../../modules/messaging/sendToBackground'
+import { getPageKey } from '../../shared/utils/pageKey'
 import { loadCurrentPageAnnotations } from './useCurrentPageAnnotations'
 
 const emptyPageInfo = (): ActivePageInfo => ({
@@ -22,6 +26,30 @@ export const usePopupState = () => {
   const pageInfo = ref<ActivePageInfo>(emptyPageInfo())
   const annotations = ref<AnnotationRecord[]>([])
   const isClearConfirmOpen = ref(false)
+  const pendingDeleteAnnotationId = ref('')
+  const pendingDeleteAnnotation = ref<AnnotationRecord | null>(null)
+  const isDeleteConfirmOpen = computed(() => pendingDeleteAnnotationId.value !== '')
+
+  const syncPendingDeleteAnnotation = () => {
+    pendingDeleteAnnotation.value =
+      annotations.value.find((annotation) => annotation.id === pendingDeleteAnnotationId.value) ?? null
+
+    if (!pendingDeleteAnnotation.value && pendingDeleteAnnotationId.value) {
+      pendingDeleteAnnotationId.value = ''
+    }
+  }
+
+  const syncAnnotationsForPage = async (url: string) => {
+    if (!url) {
+      annotations.value = []
+      syncPendingDeleteAnnotation()
+      return
+    }
+
+    const bucket = await loadCurrentPageAnnotations(url)
+    annotations.value = bucket?.annotations ?? []
+    syncPendingDeleteAnnotation()
+  }
 
   const refresh = async () => {
     // 刷新 UI 所需状态：加载当前活跃标签页信息并读取对应注释
@@ -39,8 +67,7 @@ export const usePopupState = () => {
       }
 
       // 加载当前页面的注释分桶并设置到响应式列表
-      const bucket = await loadCurrentPageAnnotations(pageInfo.value.url)
-      annotations.value = bucket?.annotations ?? []
+      await syncAnnotationsForPage(pageInfo.value.url)
     } catch (error) {
       errorMessage.value = error instanceof Error ? error.message : '加载当前页数据失败'
     } finally {
@@ -59,6 +86,16 @@ export const usePopupState = () => {
   // 清空当前页的注释：请求 background 执行清空逻辑，成功后刷新当前标签页以让 content script 重新加载最新状态。
   const cancelClearCurrentPage = () => {
     isClearConfirmOpen.value = false
+  }
+
+  const requestRemoveAnnotation = (annotationId: string) => {
+    pendingDeleteAnnotationId.value = annotationId
+    syncPendingDeleteAnnotation()
+  }
+
+  const cancelRemoveAnnotation = () => {
+    pendingDeleteAnnotationId.value = ''
+    pendingDeleteAnnotation.value = null
   }
 
   const clearCurrentPage = async () => {
@@ -140,8 +177,70 @@ export const usePopupState = () => {
     }
   }
 
+  const removeAnnotation = async (annotationId: string) => {
+    if (!pageInfo.value.tabId) {
+      errorMessage.value = '当前标签页不可用，无法删除该高亮'
+      return
+    }
+
+    isLoading.value = true
+    errorMessage.value = ''
+
+    try {
+      const result = (await browser.tabs.sendMessage(pageInfo.value.tabId, {
+        type: MESSAGE_TYPES.REMOVE_ANNOTATION_BY_ID,
+        payload: { annotationId }
+      })) as RuntimeMessageResult<{ bucket: { annotations?: AnnotationRecord[] } | null; removedCount: number }>
+
+      if (!result.ok) {
+        throw new Error(result.error)
+      }
+
+      annotations.value = result.data?.bucket?.annotations ?? []
+      cancelRemoveAnnotation()
+    } catch (error) {
+      errorMessage.value = error instanceof Error ? error.message : '删除高亮失败'
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const confirmRemoveAnnotation = async () => {
+    if (!pendingDeleteAnnotationId.value) {
+      return
+    }
+
+    await removeAnnotation(pendingDeleteAnnotationId.value)
+  }
+
+  const openHistoryOverview = async () => {
+    try {
+      await openExtensionPage('/history.html')
+    } catch (error) {
+      errorMessage.value = error instanceof Error ? error.message : '打开历史总览失败'
+    }
+  }
+  const handleStorageChanged: Parameters<typeof browser.storage.onChanged.addListener>[0] = (changes, areaName) => {
+    const pageBucketsChange = changes[STORAGE_KEYS.pageBuckets]
+
+    if (areaName !== 'local' || !pageBucketsChange || !pageInfo.value.url) {
+      return
+    }
+
+    const currentPageKey = getPageKey(pageInfo.value.url)
+    const nextBuckets = pageBucketsChange.newValue as Record<string, { annotations?: AnnotationRecord[] }> | undefined
+    const nextBucket = nextBuckets?.[currentPageKey]
+    annotations.value = nextBucket?.annotations ?? []
+    syncPendingDeleteAnnotation()
+  }
+
   onMounted(() => {
+    browser.storage.onChanged.addListener(handleStorageChanged)
     void refresh()
+  })
+
+  onBeforeUnmount(() => {
+    browser.storage.onChanged.removeListener(handleStorageChanged)
   })
 
   return {
@@ -150,10 +249,16 @@ export const usePopupState = () => {
     pageInfo,
     annotations,
     isClearConfirmOpen,
+    isDeleteConfirmOpen,
+    pendingDeleteAnnotation,
     refresh,
     requestClearCurrentPage,
     cancelClearCurrentPage,
     clearCurrentPage,
+    openHistoryOverview,
+    requestRemoveAnnotation,
+    cancelRemoveAnnotation,
+    confirmRemoveAnnotation,
     exportAnnotations,
     importAnnotations
   }

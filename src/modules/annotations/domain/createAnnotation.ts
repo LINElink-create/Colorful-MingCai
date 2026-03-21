@@ -1,4 +1,5 @@
 import type { AnnotationColor, AnnotationRecord } from '../../../shared/types/annotation'
+import { DEFAULT_ANNOTATION_COLOR } from '../../../shared/constants/annotationColors'
 import { createId } from '../../../shared/utils/id'
 import { nowIsoString } from '../../../shared/utils/time'
 import { normalizeUrlForStorage } from '../../../shared/utils/url'
@@ -8,7 +9,7 @@ export const createAnnotationFromRange = (
   range: Range,
   pageUrl: string,
   pageTitle: string,
-  color: AnnotationColor = 'yellow'
+  color: AnnotationColor = DEFAULT_ANNOTATION_COLOR
 ): AnnotationRecord => {
   // 将 Range 序列化为可持久化的锚点信息（包含容器路径、偏移、文本片段等）
   const serializedSelection = serializeSelectionRange(range)

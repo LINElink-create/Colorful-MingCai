@@ -3,8 +3,9 @@ import { buildMarkdownExport } from '../export/markdownExporter'
 import { importAnnotations } from '../export/importAnnotations'
 import { createAnnotationFromRange } from '../annotations/domain/createAnnotation'
 import { restoreAnnotation } from '../annotations/domain/restoreAnnotation'
+import { removeRenderedAnnotation } from '../annotations/rendering/highlightRenderer'
 import { normalizeRange } from '../annotations/rendering/rangeNormalizer'
-import { clearPageAnnotations, exportAnnotationBundle, getPageBucket, saveAnnotation } from '../annotations/repository/annotationRepository'
+import { clearPageAnnotations, exportAnnotationBundle, getPageBucket, removeAnnotationsByIds, saveAnnotation } from '../annotations/repository/annotationRepository'
 import { downloadTextFile } from '../browser/downloads'
 import { EXPORT_FORMATS } from '../../shared/constants/exportFormats'
 import { MESSAGE_TYPES } from '../../shared/constants/messageTypes'
@@ -18,6 +19,34 @@ type RouterContext = {
 const createOk = <TData>(data: TData): RuntimeMessageResult<TData> => ({ ok: true, data })
 
 const createError = (error: string): RuntimeMessageResult => ({ ok: false, error })
+
+const findAnnotationIdsInSelection = () => {
+  const selection = window.getSelection()
+  if (!selection || selection.rangeCount === 0) {
+    return []
+  }
+
+  const range = selection.getRangeAt(0)
+  if (range.collapsed) {
+    return []
+  }
+
+  const elements = Array.from(document.querySelectorAll('mark[data-mingcai-id]'))
+  const annotationIds = new Set<string>()
+
+  for (const element of elements) {
+    if (!range.intersectsNode(element)) {
+      continue
+    }
+
+    const annotationId = element.getAttribute('data-mingcai-id')
+    if (annotationId) {
+      annotationIds.add(annotationId)
+    }
+  }
+
+  return Array.from(annotationIds)
+}
 
 const handleCreateAnnotationFromSelection = async (message: RuntimeMessage) => {
   // 校验消息类型，确保调用者意图正确
@@ -54,6 +83,35 @@ const handleCreateAnnotationFromSelection = async (message: RuntimeMessage) => {
   return createOk({ bucket })
 }
 
+const handleRemoveAnnotationsFromSelection = async (message: RuntimeMessage) => {
+  if (message.type !== MESSAGE_TYPES.REMOVE_ANNOTATIONS_FROM_SELECTION) {
+    return createError('Unsupported message')
+  }
+
+  const annotationIds = findAnnotationIdsInSelection()
+  if (annotationIds.length === 0) {
+    return createError('当前选区中没有可取消的高亮')
+  }
+
+  for (const annotationId of annotationIds) {
+    removeRenderedAnnotation(annotationId)
+  }
+
+  const bucket = await removeAnnotationsByIds(getPageKey(window.location.href), annotationIds)
+  window.getSelection()?.removeAllRanges()
+  return createOk({ bucket, removedCount: annotationIds.length })
+}
+
+const handleRemoveAnnotationById = async (message: RuntimeMessage) => {
+  if (message.type !== MESSAGE_TYPES.REMOVE_ANNOTATION_BY_ID) {
+    return createError('Unsupported message')
+  }
+
+  removeRenderedAnnotation(message.payload.annotationId)
+  const bucket = await removeAnnotationsByIds(getPageKey(window.location.href), [message.payload.annotationId])
+  return createOk({ bucket, removedCount: 1 })
+}
+
 export const routeRuntimeMessage = async (message: RuntimeMessage, context: RouterContext = {}) => {
   try {
     // 当消息来自 content script 时，运行在页面上下文中，可直接操作 DOM
@@ -61,6 +119,14 @@ export const routeRuntimeMessage = async (message: RuntimeMessage, context: Rout
       if (message.type === MESSAGE_TYPES.CREATE_ANNOTATION_FROM_SELECTION) {
         // 在 content 端创建并渲染注释（使用页面选区）
         return await handleCreateAnnotationFromSelection(message)
+      }
+
+      if (message.type === MESSAGE_TYPES.REMOVE_ANNOTATION_BY_ID) {
+        return await handleRemoveAnnotationById(message)
+      }
+
+      if (message.type === MESSAGE_TYPES.REMOVE_ANNOTATIONS_FROM_SELECTION) {
+        return await handleRemoveAnnotationsFromSelection(message)
       }
 
       if (message.type === MESSAGE_TYPES.RESTORE_PAGE_ANNOTATIONS) {
