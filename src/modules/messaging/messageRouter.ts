@@ -9,7 +9,7 @@ import { downloadTextFile } from '../browser/downloads'
 import { EXPORT_FORMATS } from '../../shared/constants/exportFormats'
 import { MESSAGE_TYPES } from '../../shared/constants/messageTypes'
 import type { RuntimeMessage, RuntimeMessageResult } from '../../shared/types/message'
-import { normalizeUrlForStorage } from '../../shared/utils/url'
+import { getPageKey } from '../../shared/utils/pageKey'
 
 type RouterContext = {
   source?: 'content' | 'background'
@@ -39,7 +39,7 @@ const handleCreateAnnotationFromSelection = async (message: RuntimeMessage) => {
   // 基于规范化的 Range 创建 Annotation 域对象（不包含存储逻辑）
   const annotation = createAnnotationFromRange(
     normalizedRange,
-    window.location.href,
+    getPageKey(window.location.href),
     document.title,
     message.payload.color ?? 'yellow'
   )
@@ -65,7 +65,7 @@ export const routeRuntimeMessage = async (message: RuntimeMessage, context: Rout
 
       if (message.type === MESSAGE_TYPES.RESTORE_PAGE_ANNOTATIONS) {
         // 恢复当前页面的所有注释到 DOM（用于页面加载后恢复高亮）
-        const bucket = await getPageBucket(window.location.href)
+        const bucket = await getPageBucket(getPageKey(window.location.href))
         for (const annotation of bucket?.annotations ?? []) {
           restoreAnnotation(annotation)
         }
@@ -79,12 +79,12 @@ export const routeRuntimeMessage = async (message: RuntimeMessage, context: Rout
     switch (message.type) {
       case MESSAGE_TYPES.GET_CURRENT_PAGE_ANNOTATIONS: {
         // 根据传入 url 获取页面注释分桶
-        const bucket = await getPageBucket(message.payload.url)
+        const bucket = await getPageBucket(getPageKey(message.payload.url))
         return createOk({ bucket })
       }
       case MESSAGE_TYPES.CLEAR_CURRENT_PAGE_ANNOTATIONS: {
         // 清空指定页面的所有注释
-        await clearPageAnnotations(message.payload.url)
+        await clearPageAnnotations(getPageKey(message.payload.url))
         return createOk(undefined)
       }
       case MESSAGE_TYPES.EXPORT_ANNOTATIONS: {
@@ -106,7 +106,7 @@ export const routeRuntimeMessage = async (message: RuntimeMessage, context: Rout
       }
       case MESSAGE_TYPES.RESTORE_PAGE_ANNOTATIONS: {
         // 获取并返回指定页面的注释分桶（不在页面上直接渲染）
-        const bucket = await getPageBucket(normalizeUrlForStorage(message.payload.url))
+        const bucket = await getPageBucket(getPageKey(message.payload.url))
         return createOk({ bucket })
       }
       default: {

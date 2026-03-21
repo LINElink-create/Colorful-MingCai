@@ -3,7 +3,7 @@ import { EXPORT_FORMATS, type ExportFormat } from '../../shared/constants/export
 import { MESSAGE_TYPES } from '../../shared/constants/messageTypes'
 import type { AnnotationRecord } from '../../shared/types/annotation'
 import type { ActivePageInfo } from '../../shared/types/page'
-import { getActivePageInfo } from '../../modules/browser/tabs'
+import { getActivePageInfo, reloadTabById } from '../../modules/browser/tabs'
 import { sendMessageToBackground } from '../../modules/messaging/sendToBackground'
 import { loadCurrentPageAnnotations } from './useCurrentPageAnnotations'
 
@@ -21,6 +21,7 @@ export const usePopupState = () => {
   const errorMessage = ref('')
   const pageInfo = ref<ActivePageInfo>(emptyPageInfo())
   const annotations = ref<AnnotationRecord[]>([])
+  const isClearConfirmOpen = ref(false)
 
   const refresh = async () => {
     // 刷新 UI 所需状态：加载当前活跃标签页信息并读取对应注释
@@ -47,6 +48,19 @@ export const usePopupState = () => {
     }
   }
 
+  const requestClearCurrentPage = () => {
+    if (!pageInfo.value.url) {
+      return
+    }
+
+    isClearConfirmOpen.value = true
+  }
+
+  // 清空当前页的注释：请求 background 执行清空逻辑，成功后刷新当前标签页以让 content script 重新加载最新状态。
+  const cancelClearCurrentPage = () => {
+    isClearConfirmOpen.value = false
+  }
+
   const clearCurrentPage = async () => {
     if (!pageInfo.value.url) {
       return
@@ -68,6 +82,12 @@ export const usePopupState = () => {
 
       // 本地状态也清空以实时反映 UI
       annotations.value = []
+      isClearConfirmOpen.value = false
+
+      // 触发当前标签页刷新，让 content script 重新按最新存储状态加载页面高亮。
+      if (pageInfo.value.tabId !== null) {
+        await reloadTabById(pageInfo.value.tabId)
+      }
     } catch (error) {
       errorMessage.value = error instanceof Error ? error.message : '清空失败'
     } finally {
@@ -129,7 +149,10 @@ export const usePopupState = () => {
     errorMessage,
     pageInfo,
     annotations,
+    isClearConfirmOpen,
     refresh,
+    requestClearCurrentPage,
+    cancelClearCurrentPage,
     clearCurrentPage,
     exportAnnotations,
     importAnnotations

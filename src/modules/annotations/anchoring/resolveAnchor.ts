@@ -1,6 +1,12 @@
 import type { AnnotationRecord } from '../../../shared/types/annotation'
 import { getNodeByPath } from './domPath'
 
+type TextNodeSegment = {
+  node: Text
+  start: number
+  end: number
+}
+
 // 第一优先级：使用持久化时保存的 DOM 路径 + offset 直接还原 Range。
 // 优点是精度高；缺点是页面结构变化后容易失效。
 const createRangeFromPaths = (annotation: AnnotationRecord) => {
@@ -42,25 +48,175 @@ const findTextNodes = () => {
   return nodes
 }
 
-// 第二优先级：根据 textQuote 在文本节点中查找并重建 Range。
-// 当前版本只做最简单的单节点文本匹配，后续可以升级为“主文本 + 前后文”的混合校验。
-const createRangeFromQuote = (annotation: AnnotationRecord) => {
+const collectTextNodeSegments = () => {
   const textNodes = findTextNodes()
+  const segments: TextNodeSegment[] = []
+  let offset = 0
 
   for (const textNode of textNodes) {
     const content = textNode.textContent ?? ''
-    const index = content.indexOf(annotation.textQuote)
-    if (index < 0) {
+    const start = offset
+    offset += content.length
+    segments.push({
+      node: textNode,
+      start,
+      end: offset
+    })
+  }
+
+  return {
+    segments,
+    rawText: textNodes.map((node) => node.textContent ?? '').join('')
+  }
+}
+
+const normalizeTextWithMap = (rawText: string) => {
+  let normalizedText = ''
+  const normalizedToRaw: number[] = []
+  let lastWasWhitespace = false
+
+  for (let index = 0; index < rawText.length; index += 1) {
+    const char = rawText[index] ?? ''
+    const isWhitespace = /\s/.test(char)
+
+    if (isWhitespace) {
+      if (normalizedText.length === 0 || lastWasWhitespace) {
+        continue
+      }
+
+      normalizedText += ' '
+      normalizedToRaw.push(index)
+      lastWasWhitespace = true
       continue
     }
 
-    const range = document.createRange()
-    range.setStart(textNode, index)
-    range.setEnd(textNode, index + annotation.textQuote.length)
-    return range
+    normalizedText += char
+    normalizedToRaw.push(index)
+    lastWasWhitespace = false
   }
 
-  return null
+  return { normalizedText, normalizedToRaw }
+}
+
+const scoreQuoteCandidate = (normalizedText: string, annotation: AnnotationRecord, start: number, end: number) => {
+  let score = 0
+  const prefixText = annotation.prefixText.trim()
+  const suffixText = annotation.suffixText.trim()
+
+  if (prefixText) {
+    const before = normalizedText.slice(Math.max(0, start - prefixText.length), start)
+    if (before.endsWith(prefixText)) {
+      score += 4
+    } else if (before.includes(prefixText.slice(-Math.min(prefixText.length, 16)))) {
+      score += 2
+    }
+  }
+
+  if (suffixText) {
+    const after = normalizedText.slice(end, end + suffixText.length)
+    if (after.startsWith(suffixText)) {
+      score += 4
+    } else if (after.includes(suffixText.slice(0, Math.min(suffixText.length, 16)))) {
+      score += 2
+    }
+  }
+
+  return score
+}
+
+const locateSegmentPosition = (segments: TextNodeSegment[], rawOffset: number) => {
+  for (const segment of segments) {
+    if (rawOffset < segment.start) {
+      continue
+    }
+
+    if (rawOffset < segment.end) {
+      return {
+        node: segment.node,
+        offset: rawOffset - segment.start
+      }
+    }
+
+    if (rawOffset === segment.end) {
+      return {
+        node: segment.node,
+        offset: segment.end - segment.start
+      }
+    }
+  }
+
+  const lastSegment = segments[segments.length - 1]
+  if (!lastSegment) {
+    return null
+  }
+
+  return {
+    node: lastSegment.node,
+    offset: lastSegment.end - lastSegment.start
+  }
+}
+
+const createRangeFromRawOffsets = (segments: TextNodeSegment[], rawStart: number, rawEnd: number) => {
+  const startPosition = locateSegmentPosition(segments, rawStart)
+  const endPosition = locateSegmentPosition(segments, rawEnd)
+
+  if (!startPosition || !endPosition) {
+    return null
+  }
+
+  const range = document.createRange()
+
+  try {
+    range.setStart(startPosition.node, startPosition.offset)
+    range.setEnd(endPosition.node, endPosition.offset)
+    return range.toString().trim() ? range : null
+  } catch {
+    return null
+  }
+}
+
+// 第二优先级：根据 textQuote 在文本节点中查找并重建 Range。
+// 这里会把整页文本展平成一个连续字符串，并结合 prefix/suffix 对多个候选位置打分。
+const createRangeFromQuote = (annotation: AnnotationRecord) => {
+  const { segments, rawText } = collectTextNodeSegments()
+  const { normalizedText, normalizedToRaw } = normalizeTextWithMap(rawText)
+  const quote = annotation.textQuote.trim()
+
+  if (!quote || !normalizedText) {
+    return null
+  }
+
+  const candidates: Array<{ start: number; end: number; score: number }> = []
+  let searchStart = 0
+
+  while (searchStart < normalizedText.length) {
+    const index = normalizedText.indexOf(quote, searchStart)
+    if (index < 0) {
+      break
+    }
+
+    const end = index + quote.length
+    candidates.push({
+      start: index,
+      end,
+      score: scoreQuoteCandidate(normalizedText, annotation, index, end)
+    })
+    searchStart = index + 1
+  }
+
+  const bestCandidate = candidates.sort((left, right) => right.score - left.score)[0]
+  if (!bestCandidate) {
+    return null
+  }
+
+  const rawStart = normalizedToRaw[bestCandidate.start]
+  const rawEnd = bestCandidate.end < normalizedToRaw.length ? normalizedToRaw[bestCandidate.end] : rawText.length
+
+  if (rawStart === undefined || rawEnd === undefined || rawEnd < rawStart) {
+    return null
+  }
+
+  return createRangeFromRawOffsets(segments, rawStart, rawEnd)
 }
 
 // 统一的恢复入口：先走精确的路径恢复，失败后再走文本匹配降级。
