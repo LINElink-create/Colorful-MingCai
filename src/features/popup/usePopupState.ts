@@ -18,8 +18,8 @@ const emptyPageInfo = (): ActivePageInfo => ({
 })
 
 // Popup 的状态编排中心。
-// 这个 composable 把“读取当前页、导出、导入、清空、错误处理、加载态”统一收口，
-// 从而让 App.vue 只负责展示，而不直接处理浏览器 API 与消息细节。
+// 这里统一管理“当前页摘要、导出导入、单条删除确认、清空确认、历史总览入口”等动作，
+// 让 App.vue 继续保持展示层角色，不直接耦合 tabs、storage 或 runtime message 细节。
 export const usePopupState = () => {
   const isLoading = ref(false)
   const errorMessage = ref('')
@@ -89,6 +89,7 @@ export const usePopupState = () => {
   }
 
   const requestRemoveAnnotation = (annotationId: string) => {
+    // 列表项点 × 时先只打开确认态，不立即删除，避免误触造成高亮丢失。
     pendingDeleteAnnotationId.value = annotationId
     syncPendingDeleteAnnotation()
   }
@@ -210,16 +211,19 @@ export const usePopupState = () => {
       return
     }
 
+    // 确认后才真正向当前 tab 发送删除消息，由 content script 移除页面中的 mark。
     await removeAnnotation(pendingDeleteAnnotationId.value)
   }
 
   const openHistoryOverview = async () => {
+    // 历史总览是独立扩展页，不塞进 Popup 内部，避免全局列表把弹窗变成复杂页面。
     try {
       await openExtensionPage('/history.html')
     } catch (error) {
       errorMessage.value = error instanceof Error ? error.message : '打开历史总览失败'
     }
   }
+
   const handleStorageChanged: Parameters<typeof browser.storage.onChanged.addListener>[0] = (changes, areaName) => {
     const pageBucketsChange = changes[STORAGE_KEYS.pageBuckets]
 
@@ -227,6 +231,7 @@ export const usePopupState = () => {
       return
     }
 
+    // Popup 只同步当前活动页面对应 bucket，避免全局存储变化把当前页列表刷成别的页面数据。
     const currentPageKey = getPageKey(pageInfo.value.url)
     const nextBuckets = pageBucketsChange.newValue as Record<string, { annotations?: AnnotationRecord[] }> | undefined
     const nextBucket = nextBuckets?.[currentPageKey]

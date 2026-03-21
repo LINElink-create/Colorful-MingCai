@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useHistoryOverview } from '../../src/features/history/useHistoryOverview'
 
+// 历史总览页是扩展内部的独立管理页面。
+// 它负责展示“所有页面的所有摘录”，不再局限于 Popup 的当前页视角。
 const { isLoading, errorMessage, buckets, totalAnnotations, refresh, openOriginalPage, removeAnnotation, getColorMeta } =
   useHistoryOverview()
 </script>
