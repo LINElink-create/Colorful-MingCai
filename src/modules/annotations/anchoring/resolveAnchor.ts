@@ -221,7 +221,7 @@ const locateEndPosition = (segments: TextNodeSegment[], rawOffset: number) => {
   }
 }
 
-
+// 第一优先级：根据持久化的 DOM 路径和 offset 直接尝试还原 Range。
 const createRangeFromRawOffsets = (segments: TextNodeSegment[], rawStart: number, rawEnd: number) => {
   const startPosition = locateStartPosition(segments, rawStart)
   const endPosition = locateEndPosition(segments, rawEnd)
