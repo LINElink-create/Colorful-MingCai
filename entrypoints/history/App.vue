@@ -66,6 +66,7 @@ const { isLoading, errorMessage, buckets, totalAnnotations, refresh, openOrigina
             </div>
 
             <p class="annotation-quote">{{ annotation.textQuote }}</p>
+            <p v-if="annotation.note" class="annotation-note">{{ annotation.note }}</p>
 
             <div class="annotation-actions">
               <button class="delete-button" type="button" :disabled="isLoading" @click="removeAnnotation(bucket, annotation)">
@@ -292,6 +293,16 @@ const { isLoading, errorMessage, buckets, totalAnnotations, refresh, openOrigina
   color: #2e241b;
   font-size: 16px;
   line-height: 1.6;
+}
+
+.annotation-note {
+  margin: 10px 0 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #5d4a39;
+  line-height: 1.6;
+  white-space: pre-wrap;
 }
 
 .annotation-actions {

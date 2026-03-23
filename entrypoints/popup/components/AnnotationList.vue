@@ -33,6 +33,7 @@ const emit = defineEmits<{
           ×
         </button>
         <p class="quote">{{ annotation.textQuote }}</p>
+        <p v-if="annotation.note" class="note">{{ annotation.note }}</p>
         <p class="meta">{{ new Date(annotation.createdAt).toLocaleString() }}</p>
       </li>
     </ul>
@@ -93,6 +94,17 @@ const emit = defineEmits<{
 .quote {
   padding-right: 28px;
   font-weight: 600;
+}
+
+.note {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  color: #5d4a39;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
 }
 
 .meta {

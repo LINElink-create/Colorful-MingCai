@@ -9,6 +9,8 @@ import { clearPageAnnotations, exportAnnotationBundle, getPageBucket, removeAnno
 import { downloadTextFile } from '../browser/downloads'
 import { EXPORT_FORMATS } from '../../shared/constants/exportFormats'
 import { MESSAGE_TYPES } from '../../shared/constants/messageTypes'
+import { getTranslationSettings, saveTranslationSettings } from '../translation/settingsRepository'
+import { translateWithYoudao } from '../translation/youdaoClient'
 import type { RuntimeMessage, RuntimeMessageResult } from '../../shared/types/message'
 import { getPageKey } from '../../shared/utils/pageKey'
 
@@ -70,7 +72,8 @@ const handleCreateAnnotationFromSelection = async (message: RuntimeMessage) => {
     normalizedRange,
     getPageKey(window.location.href),
     document.title,
-    message.payload.color ?? 'yellow'
+    message.payload.color ?? 'yellow',
+    message.payload.note?.trim() ?? ''
   )
 
   // 在页面中渲染该 annotation（立即可见）
@@ -174,6 +177,19 @@ export const routeRuntimeMessage = async (message: RuntimeMessage, context: Rout
         // 获取并返回指定页面的注释分桶（不在页面上直接渲染）
         const bucket = await getPageBucket(getPageKey(message.payload.url))
         return createOk({ bucket })
+      }
+      case MESSAGE_TYPES.TRANSLATE_SELECTION: {
+        const settings = await getTranslationSettings()
+        const result = await translateWithYoudao(message.payload.text, settings)
+        return createOk({ result })
+      }
+      case MESSAGE_TYPES.GET_TRANSLATION_SETTINGS: {
+        const settings = await getTranslationSettings()
+        return createOk({ settings })
+      }
+      case MESSAGE_TYPES.SAVE_TRANSLATION_SETTINGS: {
+        const settings = await saveTranslationSettings(message.payload)
+        return createOk({ settings })
       }
       default: {
         return createError('未知消息类型')

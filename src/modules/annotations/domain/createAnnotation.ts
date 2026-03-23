@@ -9,7 +9,8 @@ export const createAnnotationFromRange = (
   range: Range,
   pageUrl: string,
   pageTitle: string,
-  color: AnnotationColor = DEFAULT_ANNOTATION_COLOR
+  color: AnnotationColor = DEFAULT_ANNOTATION_COLOR,
+  note = ''
 ): AnnotationRecord => {
   // 将 Range 序列化为可持久化的锚点信息（包含容器路径、偏移、文本片段等）
   const serializedSelection = serializeSelectionRange(range)
@@ -22,7 +23,7 @@ export const createAnnotationFromRange = (
     url: normalizeUrlForStorage(pageUrl), // 归一化页面 URL 以便存储和查找
     pageTitle,
     color,
-    note: '',
+    note,
     createdAt: timestamp,
     updatedAt: timestamp,
     ...serializedSelection // 包含 start/end 容器路径、offset、textQuote 等

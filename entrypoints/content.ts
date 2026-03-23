@@ -2,10 +2,12 @@ import browser from 'webextension-polyfill'
 import { defineContentScript } from 'wxt/sandbox'
 import { bootstrapHighlights } from '../src/features/content/bootstrapHighlights'
 import { observeSelection } from '../src/features/content/observeSelection'
+import { sendMessageToBackground } from '../src/modules/messaging/sendToBackground'
 import { routeRuntimeMessage } from '../src/modules/messaging/messageRouter'
+import { DEFAULT_ANNOTATION_COLOR } from '../src/shared/constants/annotationColors'
 import { MESSAGE_TYPES } from '../src/shared/constants/messageTypes'
 import type { AnnotationColor } from '../src/shared/types/annotation'
-import type { RuntimeMessage } from '../src/shared/types/message'
+import type { RuntimeMessage, TranslationResultPayload } from '../src/shared/types/message'
 
 export default defineContentScript({
   matches: ['http://*/*', 'https://*/*'],
@@ -24,6 +26,27 @@ export default defineContentScript({
           },
           { source: 'content' }
         )
+      },
+      onCreateNote: async (note: string) => {
+        await routeRuntimeMessage(
+          {
+            type: MESSAGE_TYPES.CREATE_ANNOTATION_FROM_SELECTION,
+            payload: { color: DEFAULT_ANNOTATION_COLOR, note }
+          },
+          { source: 'content' }
+        )
+      },
+      onTranslateSelection: async (text: string) => {
+        const result = await sendMessageToBackground<TranslationResultPayload>({
+          type: MESSAGE_TYPES.TRANSLATE_SELECTION,
+          payload: { text }
+        })
+
+        if (!result.ok) {
+          throw new Error(result.error)
+        }
+
+        return result.data.result
       }
     })
 

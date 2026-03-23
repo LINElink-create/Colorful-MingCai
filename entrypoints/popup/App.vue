@@ -3,6 +3,7 @@ import AnnotationList from './components/AnnotationList.vue'
 import ExportActions from './components/ExportActions.vue'
 import ImportActions from './components/ImportActions.vue'
 import PageSummaryCard from './components/PageSummaryCard.vue'
+import TranslationSettingsCard from './components/TranslationSettingsCard.vue'
 import { usePopupState } from '../../src/features/popup/usePopupState'
 
 // Popup 页面只做两件事：
@@ -13,8 +14,10 @@ const {
   errorMessage,
   pageInfo,
   annotations,
+  translationSettings,
   isClearConfirmOpen,
   isDeleteConfirmOpen,
+  isSavingTranslationSettings,
   pendingDeleteAnnotation,
   refresh,
   requestClearCurrentPage,
@@ -25,7 +28,8 @@ const {
   cancelRemoveAnnotation,
   confirmRemoveAnnotation,
   exportAnnotations,
-  importAnnotations
+  importAnnotations,
+  saveTranslationSettings
 } = usePopupState()
 </script>
 
@@ -56,6 +60,13 @@ const {
       :page-url="pageInfo.url"
       :annotation-count="annotations.length"
       :is-loading="isLoading"
+    />
+
+    <TranslationSettingsCard
+      :settings="translationSettings"
+      :disabled="isLoading"
+      :is-saving="isSavingTranslationSettings"
+      @save="saveTranslationSettings"
     />
 
     <section class="card-grid">
