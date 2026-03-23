@@ -19,7 +19,30 @@ export type SerializedSelection = {
 // 当前实现优先保存选区文本本身和 DOM 路径，为后续恢复提供双重依据。
 export const serializeSelectionRange = (range: Range): SerializedSelection => {
   const selectionText = range.toString()
-  const { textQuote, prefixText, suffixText } = buildQuoteContext(selectionText, 0, selectionText.length)
+
+// 👉 获取整页文本
+const fullText = document.body.innerText
+
+// 👉 找选区在整页中的位置
+const startIndex = fullText.indexOf(selectionText)
+
+let prefixText = ''
+let suffixText = ''
+
+if (startIndex !== -1) {
+  const endIndex = startIndex + selectionText.length
+
+  prefixText = fullText.slice(Math.max(0, startIndex - 50), startIndex)
+  suffixText = fullText.slice(endIndex, endIndex + 50)
+}
+
+const textQuote = selectionText
+
+console.log('[annotation]', {
+  textQuote,
+  prefixText,
+  suffixText
+})
 
   return {
     textQuote,

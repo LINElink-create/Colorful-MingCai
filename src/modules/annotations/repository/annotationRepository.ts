@@ -65,6 +65,38 @@ export const clearPageAnnotations = async (url: string) => {
   await writeBucketMap(bucketMap)
 }
 
+export const removeAnnotationsByIds = async (url: string, annotationIds: string[]) => {
+  if (annotationIds.length === 0) {
+    return null
+  }
+
+  const bucketMap = await readBucketMap()
+  const bucketKey = normalizeUrlForStorage(url)
+  const bucket = bucketMap[bucketKey]
+
+  if (!bucket) {
+    return null
+  }
+
+  const annotationIdSet = new Set(annotationIds)
+  const nextAnnotations = bucket.annotations.filter((annotation) => !annotationIdSet.has(annotation.id))
+
+  if (nextAnnotations.length === 0) {
+    delete bucketMap[bucketKey]
+    await writeBucketMap(bucketMap)
+    return null
+  }
+
+  bucketMap[bucketKey] = {
+    ...bucket,
+    annotations: nextAnnotations,
+    updatedAt: nowIsoString()
+  }
+
+  await writeBucketMap(bucketMap)
+  return bucketMap[bucketKey]
+}
+
 export const listPageBuckets = async () => {
   // 返回按更新时间降序排列的所有分桶列表，便于在 UI 中按最近使用排序显示
   const bucketMap = await readBucketMap()

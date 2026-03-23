@@ -1,5 +1,6 @@
-// 标注颜色枚举（首版仅支持黄色）
-export type AnnotationColor = 'yellow'
+// 标注颜色枚举。
+// 这些值会被持久化到 annotation 数据中，并在恢复时用于决定高亮外观。
+export type AnnotationColor = 'yellow' | 'green' | 'blue' | 'pink'
 
 // 单条标注记录的持久化结构，包含用于恢复高亮的锚点信息与元数据
 export type AnnotationRecord = {

@@ -3,6 +3,7 @@ import AnnotationList from './components/AnnotationList.vue'
 import ExportActions from './components/ExportActions.vue'
 import ImportActions from './components/ImportActions.vue'
 import PageSummaryCard from './components/PageSummaryCard.vue'
+import TranslationSettingsCard from './components/TranslationSettingsCard.vue'
 import { usePopupState } from '../../src/features/popup/usePopupState'
 
 // Popup 页面只做两件事：
@@ -13,20 +14,29 @@ const {
   errorMessage,
   pageInfo,
   annotations,
+  translationSettings,
   isClearConfirmOpen,
+  isDeleteConfirmOpen,
+  isSavingTranslationSettings,
+  pendingDeleteAnnotation,
   refresh,
   requestClearCurrentPage,
   cancelClearCurrentPage,
   clearCurrentPage,
+  openHistoryOverview,
+  requestRemoveAnnotation,
+  cancelRemoveAnnotation,
+  confirmRemoveAnnotation,
   exportAnnotations,
-  importAnnotations
+  importAnnotations,
+  saveTranslationSettings
 } = usePopupState()
 </script>
 
 <!--
   说明：
   - 该组件是整个扩展弹窗的总装层
-  - 页面中的“刷新、导出、导入、清空”都不会直接碰浏览器 API，而是交给 composable 处理
+  - 页面中的“刷新、导出、导入、历史总览、单条删除、清空”都不会直接碰浏览器 API，而是交给 composable 处理
 -->
 
 <template>
@@ -52,12 +62,23 @@ const {
       :is-loading="isLoading"
     />
 
+    <TranslationSettingsCard
+      :settings="translationSettings"
+      :disabled="isLoading"
+      :is-saving="isSavingTranslationSettings"
+      @save="saveTranslationSettings"
+    />
+
     <section class="card-grid">
       <ExportActions :disabled="isLoading" @export="exportAnnotations" />
       <ImportActions :disabled="isLoading" @import="importAnnotations" />
     </section>
 
-    <AnnotationList :annotations="annotations" :is-loading="isLoading" />
+    <button class="history-button" :disabled="isLoading" @click="openHistoryOverview">
+      打开历史总览
+    </button>
+
+    <AnnotationList :annotations="annotations" :is-loading="isLoading" @remove="requestRemoveAnnotation" />
 
     <button class="danger-button" :disabled="isLoading || annotations.length === 0" @click="requestClearCurrentPage">
       清空当前页高亮
@@ -88,6 +109,32 @@ const {
           </button>
           <button class="confirm-button" :disabled="isLoading" @click="clearCurrentPage">
             {{ isLoading ? '清空中...' : '确认清空' }}
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div v-if="isDeleteConfirmOpen" class="confirm-overlay" @click="cancelRemoveAnnotation">
+      <section class="confirm-dialog confirm-dialog-delete" @click.stop>
+        <p class="confirm-badge confirm-badge-delete">删除单条高亮</p>
+        <h2>确认删除这条摘录？</h2>
+        <p class="confirm-description">
+          这会删除当前页面中的对应高亮，同时从本地保存记录中移除这一项。
+        </p>
+
+        <div class="confirm-meta">
+          <p>
+            <span>摘录内容</span>
+            <strong>{{ pendingDeleteAnnotation?.textQuote || '未找到待删除内容' }}</strong>
+          </p>
+        </div>
+
+        <div class="confirm-actions">
+          <button class="secondary-button" :disabled="isLoading" @click="cancelRemoveAnnotation">
+            取消
+          </button>
+          <button class="confirm-button confirm-button-delete" :disabled="isLoading" @click="confirmRemoveAnnotation">
+            {{ isLoading ? '删除中...' : '确认删除' }}
           </button>
         </div>
       </section>
@@ -134,6 +181,7 @@ const {
 }
 
 .ghost-button,
+.history-button,
 .danger-button,
 .secondary-button,
 .confirm-button {
@@ -155,6 +203,14 @@ const {
   color: #fff8e8;
 }
 
+.history-button {
+  width: 100%;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, #efe0b7 0%, #e1c987 100%);
+  color: #4d3825;
+  box-shadow: 0 10px 20px rgba(171, 133, 55, 0.16);
+}
+
 .secondary-button {
   background: #f5ecd8;
   color: #574537;
@@ -166,7 +222,12 @@ const {
   box-shadow: 0 10px 24px rgba(125, 28, 16, 0.24);
 }
 
+.confirm-button-delete {
+  background: linear-gradient(135deg, #a12d22 0%, #6f1813 100%);
+}
+
 .ghost-button:hover,
+.history-button:hover,
 .danger-button:hover,
 .secondary-button:hover,
 .confirm-button:hover {
@@ -205,10 +266,19 @@ const {
   letter-spacing: 0.06em;
 }
 
+.confirm-badge-delete {
+  background: #f6ddd8;
+  color: #8d2d1f;
+}
+
 .confirm-dialog h2 {
   margin: 0;
   font-size: 22px;
   line-height: 1.2;
+}
+
+.confirm-dialog-delete {
+  border-color: rgba(120, 32, 23, 0.16);
 }
 
 .confirm-description {

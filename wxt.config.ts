@@ -11,7 +11,7 @@ export default defineConfig({
   manifest: {
     name: '明彩',
     description: '网页划词高亮与导出插件 MVP',
-    version: '0.1.0',
+    version: '1.1.0',
     // 需要的权限列表，声明插件需要访问的浏览器功能和数据
     permissions: ['storage', 'contextMenus', 'downloads', 'activeTab', 'tabs'],
     // 声明插件需要访问的主机权限，这里允许访问所有 HTTP 和 HTTPS 网站
