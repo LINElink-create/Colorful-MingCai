@@ -16,6 +16,6 @@ export const restoreAnnotation = (annotation: AnnotationRecord) => {
   }
 
   // 渲染高亮到页面上（传入 id 以便后续可通过 id 找到并移除）
-  renderAnnotationRange(range, annotation.id, annotation.color)
+  renderAnnotationRange(range, annotation.id, annotation.color, annotation.note ?? '')
   return true
 }

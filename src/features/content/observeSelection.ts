@@ -11,6 +11,7 @@ type ObserveSelectionOptions = {
 const TOOLBAR_ID = 'mingcai-selection-toolbar'
 const PANEL_ID = 'mingcai-translation-panel'
 const NOTE_PANEL_ID = 'mingcai-note-panel'
+const SAVED_NOTE_PANEL_ID = 'mingcai-saved-note-panel'
 
 const TOOLBAR_OFFSET_Y = 14
 const PANEL_OFFSET_Y = 12
@@ -29,6 +30,13 @@ type NotePanelElements = {
   saveButton: HTMLButtonElement
   cancelButton: HTMLButtonElement
   status: HTMLParagraphElement
+}
+
+type SavedNotePanelElements = {
+  panel: HTMLDivElement
+  title: HTMLParagraphElement
+  body: HTMLParagraphElement
+  closeButton: HTMLButtonElement
 }
 
 const copyText = async (text: string) => {
@@ -315,6 +323,71 @@ const ensureNotePanel = (): NotePanelElements => {
   return { panel, textarea, saveButton, cancelButton, status }
 }
 
+const ensureSavedNotePanel = (): SavedNotePanelElements => {
+  const existingPanel = document.getElementById(SAVED_NOTE_PANEL_ID)
+  if (existingPanel) {
+    return {
+      panel: existingPanel as HTMLDivElement,
+      title: existingPanel.querySelector('[data-role="saved-note-title"]') as HTMLParagraphElement,
+      body: existingPanel.querySelector('[data-role="saved-note-body"]') as HTMLParagraphElement,
+      closeButton: existingPanel.querySelector('[data-role="saved-note-close"]') as HTMLButtonElement
+    }
+  }
+
+  const panel = document.createElement('div')
+  panel.id = SAVED_NOTE_PANEL_ID
+  panel.style.position = 'fixed'
+  panel.style.zIndex = '2147483647'
+  panel.style.display = 'none'
+  panel.style.maxWidth = '320px'
+  panel.style.padding = '14px'
+  panel.style.borderRadius = '16px'
+  panel.style.background = 'rgba(255, 250, 241, 0.98)'
+  panel.style.boxShadow = '0 18px 36px rgba(43, 33, 24, 0.18)'
+  panel.style.border = '1px solid rgba(197, 161, 111, 0.34)'
+  panel.style.color = '#35281d'
+  panel.style.fontFamily = '"Segoe UI", "PingFang SC", sans-serif'
+
+  const title = document.createElement('p')
+  title.setAttribute('data-role', 'saved-note-title')
+  title.textContent = '划词笔记'
+  title.style.margin = '0 0 8px'
+  title.style.fontSize = '12px'
+  title.style.fontWeight = '700'
+  title.style.color = '#9c6b2f'
+
+  const body = document.createElement('p')
+  body.setAttribute('data-role', 'saved-note-body')
+  body.style.margin = '0'
+  body.style.fontSize = '14px'
+  body.style.lineHeight = '1.6'
+  body.style.whiteSpace = 'pre-wrap'
+  body.style.wordBreak = 'break-word'
+
+  const actionRow = document.createElement('div')
+  actionRow.style.display = 'flex'
+  actionRow.style.justifyContent = 'flex-end'
+  actionRow.style.marginTop = '12px'
+
+  const closeButton = document.createElement('button')
+  closeButton.type = 'button'
+  closeButton.setAttribute('data-role', 'saved-note-close')
+  closeButton.textContent = '关闭'
+  closeButton.style.border = '0'
+  closeButton.style.borderRadius = '999px'
+  closeButton.style.padding = '6px 10px'
+  closeButton.style.background = '#f5ecd8'
+  closeButton.style.color = '#574537'
+  closeButton.style.cursor = 'pointer'
+  closeButton.style.font = 'inherit'
+
+  actionRow.append(closeButton)
+  panel.append(title, body, actionRow)
+  document.body.append(panel)
+
+  return { panel, title, body, closeButton }
+}
+
 const hasMeaningfulSelection = () => {
   const selection = window.getSelection()
   if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
@@ -364,6 +437,7 @@ export const observeSelection = ({ onCreateAnnotation, onCreateNote, onTranslate
   const toolbar = ensureToolbar(onCreateAnnotation)
   const panelElements = ensurePanel()
   const notePanelElements = ensureNotePanel()
+  const savedNotePanelElements = ensureSavedNotePanel()
   let noteButton = toolbar.querySelector('[data-role="note"]') as HTMLButtonElement | null
   let translateButton = toolbar.querySelector('[data-role="translate"]') as HTMLButtonElement | null
 
@@ -432,6 +506,10 @@ export const observeSelection = ({ onCreateAnnotation, onCreateNote, onTranslate
     notePanelElements.saveButton.textContent = '保存笔记'
   }
 
+  const hideSavedNotePanel = () => {
+    savedNotePanelElements.panel.style.display = 'none'
+  }
+
   const showPanelMessage = (statusText: string, bodyText: string, metaText = '', isError = false, showCopyButton = false) => {
     panelElements.panel.style.display = 'block'
     panelElements.status.textContent = statusText
@@ -444,19 +522,55 @@ export const observeSelection = ({ onCreateAnnotation, onCreateNote, onTranslate
     positionPanel(panelElements.panel)
   }
 
+  const showSavedNotePanel = (anchorElement: HTMLElement, note: string) => {
+    savedNotePanelElements.panel.style.display = 'block'
+    savedNotePanelElements.title.textContent = '划词笔记'
+    savedNotePanelElements.body.textContent = note
+
+    const rect = anchorElement.getBoundingClientRect()
+    const top = Math.min(
+      window.innerHeight - savedNotePanelElements.panel.offsetHeight - 12,
+      Math.max(12, rect.bottom + PANEL_OFFSET_Y)
+    )
+    const left = Math.min(
+      window.innerWidth - savedNotePanelElements.panel.offsetWidth - 12,
+      Math.max(12, rect.left + rect.width / 2 - savedNotePanelElements.panel.offsetWidth / 2)
+    )
+
+    savedNotePanelElements.panel.style.top = `${top}px`
+    savedNotePanelElements.panel.style.left = `${left}px`
+  }
+
+  // const syncToolbar = () => {
+  //   if (!hasMeaningfulSelection()) {
+  //     hideToolbar()
+  //     hidePanel()
+  //     hideNotePanel()
+  //     return
+  //   }
+
+  //   positionToolbar(toolbar)
+  // }
   const syncToolbar = () => {
-    if (!hasMeaningfulSelection()) {
-      hideToolbar()
-      hidePanel()
+  const isNotePanelOpen = notePanelElements.panel.style.display === 'block'
+
+  if (!hasMeaningfulSelection()) {
+    hideToolbar()
+    hidePanel()
+
+    if (!isNotePanelOpen) {
       hideNotePanel()
-      return
     }
 
-    positionToolbar(toolbar)
+    return
   }
+
+  positionToolbar(toolbar)
+}
 
   noteButton.addEventListener('click', () => {
     hidePanel()
+    hideSavedNotePanel()
     notePanelElements.panel.style.display = 'block'
     notePanelElements.status.textContent = '为当前划词添加笔记'
     notePanelElements.status.style.color = '#9c6b2f'
@@ -522,6 +636,10 @@ export const observeSelection = ({ onCreateAnnotation, onCreateNote, onTranslate
     hideNotePanel()
   })
 
+  savedNotePanelElements.closeButton.addEventListener('click', () => {
+    hideSavedNotePanel()
+  })
+
   notePanelElements.saveButton.addEventListener('click', async () => {
     const note = notePanelElements.textarea.value.trim()
 
@@ -567,6 +685,7 @@ export const observeSelection = ({ onCreateAnnotation, onCreateNote, onTranslate
       hideToolbar()
       hidePanel()
       hideNotePanel()
+      hideSavedNotePanel()
     },
     true
   )
@@ -574,15 +693,36 @@ export const observeSelection = ({ onCreateAnnotation, onCreateNote, onTranslate
     hideToolbar()
     hidePanel()
     hideNotePanel()
+    hideSavedNotePanel()
   })
   document.addEventListener('mousedown', (event) => {
+    const noteMarker = (event.target as HTMLElement | null)?.closest('[data-mingcai-note-marker="true"]') as HTMLElement | null
+
+    if (noteMarker) {
+      event.preventDefault()
+      event.stopPropagation()
+      hidePanel()
+      hideNotePanel()
+
+      const noteHost = noteMarker.closest('mark[data-mingcai-has-note="true"]') as HTMLElement | null
+      const note = noteHost?.dataset.mingcaiNote?.trim() ?? ''
+
+      if (note) {
+        showSavedNotePanel(noteMarker, note)
+      }
+
+      return
+    }
+
     if (
       !toolbar.contains(event.target as Node) &&
       !panelElements.panel.contains(event.target as Node) &&
-      !notePanelElements.panel.contains(event.target as Node)
+      !notePanelElements.panel.contains(event.target as Node) &&
+      !savedNotePanelElements.panel.contains(event.target as Node)
     ) {
       hidePanel()
       hideNotePanel()
+      hideSavedNotePanel()
       scheduleFrame(syncToolbar)
     }
   })

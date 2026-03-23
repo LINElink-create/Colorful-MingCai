@@ -18,6 +18,38 @@ export const ensureHighlightStyle = () => {
       box-decoration-break: clone;
     }
 
+    mark[data-mingcai-has-note="true"] {
+      text-decoration-line: underline;
+      text-decoration-style: wavy;
+      text-decoration-color: #d8ab19;
+      text-decoration-thickness: 1.5px;
+      text-underline-offset: 0.18em;
+    }
+
+    mark[data-mingcai-has-note="true"] [data-mingcai-note-marker="true"] {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.35em;
+      height: 1.35em;
+      margin-right: 0.18em;
+      border: 0;
+      border-radius: 999px;
+      background: #f2d35d;
+      color: #5b4300;
+      font: inherit;
+      font-size: 0.78em;
+      font-weight: 700;
+      line-height: 1;
+      vertical-align: baseline;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(91, 67, 0, 0.18);
+    }
+
+    mark[data-mingcai-has-note="true"] [data-mingcai-note-marker="true"]:hover {
+      transform: translateY(-1px);
+    }
+
     mark[data-mingcai-color="yellow"] {
       background: #ffe37a;
     }
