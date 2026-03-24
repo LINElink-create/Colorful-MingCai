@@ -8,6 +8,12 @@ import { DEFAULT_ANNOTATION_COLOR } from '../src/shared/constants/annotationColo
 import { MESSAGE_TYPES } from '../src/shared/constants/messageTypes'
 import type { AnnotationColor } from '../src/shared/types/annotation'
 import type { RuntimeMessage, TranslationResultPayload } from '../src/shared/types/message'
+import { createAnnotationFromRange } from '../src/modules/annotations/domain/createAnnotation'
+import { getPageKey } from '../src/shared/utils/pageKey'
+import { normalizeRange } from '../src/modules/annotations/rendering/rangeNormalizer'
+import { restoreAnnotation } from '../src/modules/annotations/domain/restoreAnnotation'
+import { saveAnnotation } from '../src/modules/annotations/repository/annotationRepository'
+
 
 export default defineContentScript({
   matches: ['http://*/*', 'https://*/*'],
@@ -27,15 +33,55 @@ export default defineContentScript({
           { source: 'content' }
         )
       },
-      onCreateNote: async (note: string) => {
-        await routeRuntimeMessage(
-          {
-            type: MESSAGE_TYPES.CREATE_ANNOTATION_FROM_SELECTION,
-            payload: { color: DEFAULT_ANNOTATION_COLOR, note }
-          },
-          { source: 'content' }
-        )
-      },
+      // onCreateNote: async (note: string) => {
+      //   await routeRuntimeMessage(
+      //     {
+      //       type: MESSAGE_TYPES.CREATE_ANNOTATION_FROM_SELECTION,
+      //       payload: { color: DEFAULT_ANNOTATION_COLOR, note }
+      //     },
+      //     { source: 'content' }
+      //   )
+      // }
+//       onCreateNote: async (note: string) => {
+//   const result = await routeRuntimeMessage(
+//     {
+//       type: MESSAGE_TYPES.CREATE_ANNOTATION_FROM_SELECTION,
+//       payload: { color: DEFAULT_ANNOTATION_COLOR, note }
+//     },
+//     { source: 'content' }
+//   )
+
+//   if (!result.ok) {
+//     throw new Error(result.error)
+//   }
+// }
+// onCreateNote: async (range: Range, note: string) => {
+//   // 这里不再调用 CREATE_ANNOTATION_FROM_SELECTION
+  
+// }
+onCreateNote: async (range: Range, note: string) => {
+  const normalizedRange = normalizeRange(range)
+
+  if (!normalizedRange) {
+    throw new Error('当前没有可高亮的有效选区')
+  }
+
+  const annotation = createAnnotationFromRange(
+    normalizedRange,
+    getPageKey(window.location.href),
+    document.title,
+    DEFAULT_ANNOTATION_COLOR,
+    note
+  )
+
+  const restored = restoreAnnotation(annotation)
+  if (!restored) {
+    throw new Error('无法在当前页面渲染这条笔记标注')
+  }
+
+  await saveAnnotation(annotation)
+  window.getSelection()?.removeAllRanges()
+},
       onTranslateSelection: async (text: string) => {
         const result = await sendMessageToBackground<TranslationResultPayload>({
           type: MESSAGE_TYPES.TRANSLATE_SELECTION,
