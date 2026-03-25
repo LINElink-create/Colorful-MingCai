@@ -327,12 +327,25 @@ const ensureNotePanel = (): NotePanelElements => {
 const ensureSavedNotePanel = (): SavedNotePanelElements => {
   const existingPanel = document.getElementById(SAVED_NOTE_PANEL_ID)
   if (existingPanel) {
-    return {
-      panel: existingPanel as HTMLDivElement,
-      title: existingPanel.querySelector('[data-role="saved-note-title"]') as HTMLParagraphElement,
-      body: existingPanel.querySelector('[data-role="saved-note-body"]') as HTMLParagraphElement,
-      closeButton: existingPanel.querySelector('[data-role="saved-note-close"]') as HTMLButtonElement
+    const titleEl = existingPanel.querySelector('[data-role="saved-note-title"]')
+    const bodyEl = existingPanel.querySelector('[data-role="saved-note-body"]')
+    const closeButtonEl = existingPanel.querySelector('[data-role="saved-note-close"]')
+
+    if (
+      titleEl instanceof HTMLParagraphElement &&
+      bodyEl instanceof HTMLParagraphElement &&
+      closeButtonEl instanceof HTMLButtonElement
+    ) {
+      return {
+        panel: existingPanel as HTMLDivElement,
+        title: titleEl,
+        body: bodyEl,
+        closeButton: closeButtonEl
+      }
     }
+
+    // Existing panel has our ID but not the expected structure; remove and recreate.
+    existingPanel.remove()
   }
 
   const panel = document.createElement('div')
