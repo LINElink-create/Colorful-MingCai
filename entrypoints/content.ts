@@ -12,7 +12,7 @@ import { createAnnotationFromRange } from '../src/modules/annotations/domain/cre
 import { getPageKey } from '../src/shared/utils/pageKey'
 import { normalizeRange } from '../src/modules/annotations/rendering/rangeNormalizer'
 import { saveAnnotation } from '../src/modules/annotations/repository/annotationRepository'
-
+import { restoreAnnotation } from '../src/modules/annotations/domain/restoreAnnotation'
 
 export default defineContentScript({
   matches: ['http://*/*', 'https://*/*'],
