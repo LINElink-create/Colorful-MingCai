@@ -11,7 +11,7 @@ import type { RuntimeMessage, TranslationResultPayload } from '../src/shared/typ
 import { createAnnotationFromRange } from '../src/modules/annotations/domain/createAnnotation'
 import { getPageKey } from '../src/shared/utils/pageKey'
 import { normalizeRange } from '../src/modules/annotations/rendering/rangeNormalizer'
-import { restoreAnnotation } from '../src/modules/annotations/domain/restoreAnnotation'
+import { renderAnnotationRange } from '../src/modules/annotations/rendering/highlightRenderer'
 import { saveAnnotation } from '../src/modules/annotations/repository/annotationRepository'
 
 
@@ -33,33 +33,7 @@ export default defineContentScript({
           { source: 'content' }
         )
       },
-      // onCreateNote: async (note: string) => {
-      //   await routeRuntimeMessage(
-      //     {
-      //       type: MESSAGE_TYPES.CREATE_ANNOTATION_FROM_SELECTION,
-      //       payload: { color: DEFAULT_ANNOTATION_COLOR, note }
-      //     },
-      //     { source: 'content' }
-      //   )
-      // }
-//       onCreateNote: async (note: string) => {
-//   const result = await routeRuntimeMessage(
-//     {
-//       type: MESSAGE_TYPES.CREATE_ANNOTATION_FROM_SELECTION,
-//       payload: { color: DEFAULT_ANNOTATION_COLOR, note }
-//     },
-//     { source: 'content' }
-//   )
-
-//   if (!result.ok) {
-//     throw new Error(result.error)
-//   }
-// }
-// onCreateNote: async (range: Range, note: string) => {
-//   // 这里不再调用 CREATE_ANNOTATION_FROM_SELECTION
-  
-// }
-onCreateNote: async (range: Range, note: string) => {
+      onCreateNote: async (range: Range, note: string) => {
   const normalizedRange = normalizeRange(range)
 
   if (!normalizedRange) {
@@ -74,10 +48,7 @@ onCreateNote: async (range: Range, note: string) => {
     note
   )
 
-  const restored = restoreAnnotation(annotation)
-  if (!restored) {
-    throw new Error('无法在当前页面渲染这条笔记标注')
-  }
+  renderAnnotationRange(normalizedRange, annotation.id, annotation.color, annotation.note ?? '')
 
   await saveAnnotation(annotation)
   window.getSelection()?.removeAllRanges()
