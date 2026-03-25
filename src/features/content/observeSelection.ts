@@ -2,11 +2,6 @@ import { ANNOTATION_COLORS } from '../../shared/constants/annotationColors'
 import type { AnnotationColor } from '../../shared/types/annotation'
 import type { TranslationResult } from '../../shared/types/translation'
 
-// type ObserveSelectionOptions = {
-//   onCreateAnnotation: (color: AnnotationColor) => Promise<void> | void
-//   onCreateNote: (note: string) => Promise<void> | void
-//   onTranslateSelection: (text: string) => Promise<TranslationResult>
-// }
 type ObserveSelectionOptions = {
   onCreateAnnotation: (color: AnnotationColor) => Promise<void> | void
   onCreateNote: (range: Range, note: string) => Promise<void> | void
@@ -332,12 +327,25 @@ const ensureNotePanel = (): NotePanelElements => {
 const ensureSavedNotePanel = (): SavedNotePanelElements => {
   const existingPanel = document.getElementById(SAVED_NOTE_PANEL_ID)
   if (existingPanel) {
-    return {
-      panel: existingPanel as HTMLDivElement,
-      title: existingPanel.querySelector('[data-role="saved-note-title"]') as HTMLParagraphElement,
-      body: existingPanel.querySelector('[data-role="saved-note-body"]') as HTMLParagraphElement,
-      closeButton: existingPanel.querySelector('[data-role="saved-note-close"]') as HTMLButtonElement
+    const titleEl = existingPanel.querySelector('[data-role="saved-note-title"]')
+    const bodyEl = existingPanel.querySelector('[data-role="saved-note-body"]')
+    const closeButtonEl = existingPanel.querySelector('[data-role="saved-note-close"]')
+
+    if (
+      titleEl instanceof HTMLParagraphElement &&
+      bodyEl instanceof HTMLParagraphElement &&
+      closeButtonEl instanceof HTMLButtonElement
+    ) {
+      return {
+        panel: existingPanel as HTMLDivElement,
+        title: titleEl,
+        body: bodyEl,
+        closeButton: closeButtonEl
+      }
     }
+
+    // Existing panel has our ID but not the expected structure; remove and recreate.
+    existingPanel.remove()
   }
 
   const panel = document.createElement('div')
@@ -444,7 +452,6 @@ export const observeSelection = ({ onCreateAnnotation, onCreateNote, onTranslate
   const panelElements = ensurePanel()
   const notePanelElements = ensureNotePanel()
   const savedNotePanelElements = ensureSavedNotePanel()
-  // 
   let pendingNoteRange: Range | null = null
   let isComposingNote = false
 
@@ -507,23 +514,15 @@ export const observeSelection = ({ onCreateAnnotation, onCreateNote, onTranslate
     panelElements.copyButton.textContent = '复制译文'
   }
 
-  // const hideNotePanel = () => {
-  //   notePanelElements.panel.style.display = 'none'
-  //   notePanelElements.textarea.value = ''
-  //   notePanelElements.status.textContent = '为当前划词添加笔记'
-  //   notePanelElements.status.style.color = '#9c6b2f'
-  //   notePanelElements.saveButton.disabled = false
-  //   notePanelElements.saveButton.textContent = '保存笔记'
-  // }
   const hideNotePanel = () => {
-  notePanelElements.panel.style.display = 'none'
-  notePanelElements.textarea.value = ''
-  notePanelElements.status.textContent = '为当前划词添加笔记'
-  notePanelElements.status.style.color = '#9c6b2f'
-  notePanelElements.saveButton.disabled = false
-  notePanelElements.saveButton.textContent = '保存笔记'
-  pendingNoteRange = null
-  isComposingNote = false
+    notePanelElements.panel.style.display = 'none'
+    notePanelElements.textarea.value = ''
+    notePanelElements.status.textContent = '为当前划词添加笔记'
+    notePanelElements.status.style.color = '#9c6b2f'
+    notePanelElements.saveButton.disabled = false
+    notePanelElements.saveButton.textContent = '保存笔记'
+    pendingNoteRange = null
+    isComposingNote = false
 }
 
   const hideSavedNotePanel = () => {
@@ -561,32 +560,7 @@ export const observeSelection = ({ onCreateAnnotation, onCreateNote, onTranslate
     savedNotePanelElements.panel.style.left = `${left}px`
   }
 
-  // const syncToolbar = () => {
-  //   if (!hasMeaningfulSelection()) {
-  //     hideToolbar()
-  //     hidePanel()
-  //     hideNotePanel()
-  //     return
-  //   }
 
-  //   positionToolbar(toolbar)
-  // }
-//   const syncToolbar = () => {
-//   const isNotePanelOpen = notePanelElements.panel.style.display === 'block'
-
-//   if (!hasMeaningfulSelection()) {
-//     hideToolbar()
-//     hidePanel()
-
-//     if (!isNotePanelOpen) {
-//       hideNotePanel()
-//     }
-
-//     return
-//   }
-
-//   positionToolbar(toolbar)
-// }
 const syncToolbar = () => {
   if (isComposingNote) {
     return
@@ -602,15 +576,6 @@ const syncToolbar = () => {
   positionToolbar(toolbar)
 }
 
-  // noteButton.addEventListener('click', () => {
-  //   hidePanel()
-  //   hideSavedNotePanel()
-  //   notePanelElements.panel.style.display = 'block'
-  //   notePanelElements.status.textContent = '为当前划词添加笔记'
-  //   notePanelElements.status.style.color = '#9c6b2f'
-  //   positionPanel(notePanelElements.panel)
-  //   window.setTimeout(() => notePanelElements.textarea.focus(), 0)
-  // })
 
   // 改为点击“笔记”按钮后先检查是否有有效选区，如果没有则提示用户先选中文本；如果有，则将选区保存到 pendingNoteRange 中，并打开笔记输入面板
   noteButton.addEventListener('click', () => {
