@@ -561,22 +561,20 @@ export const observeSelection = ({ onCreateAnnotation, onCreateNote, onTranslate
   }
 
 
-const syncToolbar = () => {
-  if (isComposingNote) {
-    return
+  const syncToolbar = () => {
+    if (isComposingNote) {
+      return
+    }
+
+    if (!hasMeaningfulSelection()) {
+      hideToolbar()
+      hidePanel()
+      hideNotePanel()
+      return
+    }
+
+    positionToolbar(toolbar)
   }
-
-  if (!hasMeaningfulSelection()) {
-    hideToolbar()
-    hidePanel()
-    hideNotePanel()
-    return
-  }
-
-  positionToolbar(toolbar)
-}
-
-
   // 改为点击“笔记”按钮后先检查是否有有效选区，如果没有则提示用户先选中文本；如果有，则将选区保存到 pendingNoteRange 中，并打开笔记输入面板
   noteButton.addEventListener('click', () => {
     const selection = window.getSelection()
