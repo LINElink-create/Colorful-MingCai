@@ -439,7 +439,6 @@ export const observeSelection = ({ onCreateAnnotation, onCreateNote, onTranslate
   const panelElements = ensurePanel()
   const notePanelElements = ensureNotePanel()
   const savedNotePanelElements = ensureSavedNotePanel()
-  // 
   let pendingNoteRange: Range | null = null
   let isComposingNote = false
 
