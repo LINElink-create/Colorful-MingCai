@@ -584,7 +584,14 @@ export const observeSelection = ({ onCreateAnnotation, onCreateNote, onTranslate
       notePanelElements.panel.style.display = 'block'
       notePanelElements.status.textContent = '请先选中一段文本再添加笔记'
       notePanelElements.status.style.color = '#a12d22'
-      positionPanel(notePanelElements.panel)
+      // 当没有有效选区时，使用视口居中定位，而不是依赖选区位置
+      const style = notePanelElements.panel.style
+      style.position = 'fixed'
+      style.top = '50%'
+      style.left = '50%'
+      style.transform = 'translate(-50%, -50%)'
+      style.right = ''
+      style.bottom = ''
       return
     }
 
