@@ -50,6 +50,12 @@ export const ensureHighlightStyle = () => {
       transform: translateY(-1px);
     }
 
+    mark[data-mingcai-has-note="true"] [data-mingcai-note-marker="true"]:focus,
+    mark[data-mingcai-has-note="true"] [data-mingcai-note-marker="true"]:focus-visible {
+      outline: 2px solid #1a73e8;
+      outline-offset: 2px;
+      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.35), 0 2px 6px rgba(91, 67, 0, 0.18);
+    }
     mark[data-mingcai-color="yellow"] {
       background: #ffe37a;
     }
