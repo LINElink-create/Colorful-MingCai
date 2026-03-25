@@ -606,7 +606,7 @@ export const observeSelection = ({ onCreateAnnotation, onCreateNote, onTranslate
 
     window.setTimeout(() => notePanelElements.textarea.focus(), 0)
   })
-  // 监听输入法状态，避免在输入过程中同步选区导致的面板闪烁和光标丢失
+  // 点击“翻译”按钮后，对当前选区进行校验并请求翻译结果
   translateButton.addEventListener('click', async () => {
     const selectionText = window.getSelection()?.toString().trim() ?? ''
 
