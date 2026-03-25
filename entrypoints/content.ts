@@ -11,7 +11,6 @@ import type { RuntimeMessage, TranslationResultPayload } from '../src/shared/typ
 import { createAnnotationFromRange } from '../src/modules/annotations/domain/createAnnotation'
 import { getPageKey } from '../src/shared/utils/pageKey'
 import { normalizeRange } from '../src/modules/annotations/rendering/rangeNormalizer'
-import { renderAnnotationRange } from '../src/modules/annotations/rendering/highlightRenderer'
 import { saveAnnotation } from '../src/modules/annotations/repository/annotationRepository'
 
 
