@@ -502,23 +502,15 @@ export const observeSelection = ({ onCreateAnnotation, onCreateNote, onTranslate
     panelElements.copyButton.textContent = '复制译文'
   }
 
-  // const hideNotePanel = () => {
-  //   notePanelElements.panel.style.display = 'none'
-  //   notePanelElements.textarea.value = ''
-  //   notePanelElements.status.textContent = '为当前划词添加笔记'
-  //   notePanelElements.status.style.color = '#9c6b2f'
-  //   notePanelElements.saveButton.disabled = false
-  //   notePanelElements.saveButton.textContent = '保存笔记'
-  // }
   const hideNotePanel = () => {
-  notePanelElements.panel.style.display = 'none'
-  notePanelElements.textarea.value = ''
-  notePanelElements.status.textContent = '为当前划词添加笔记'
-  notePanelElements.status.style.color = '#9c6b2f'
-  notePanelElements.saveButton.disabled = false
-  notePanelElements.saveButton.textContent = '保存笔记'
-  pendingNoteRange = null
-  isComposingNote = false
+    notePanelElements.panel.style.display = 'none'
+    notePanelElements.textarea.value = ''
+    notePanelElements.status.textContent = '为当前划词添加笔记'
+    notePanelElements.status.style.color = '#9c6b2f'
+    notePanelElements.saveButton.disabled = false
+    notePanelElements.saveButton.textContent = '保存笔记'
+    pendingNoteRange = null
+    isComposingNote = false
 }
 
   const hideSavedNotePanel = () => {
@@ -556,32 +548,7 @@ export const observeSelection = ({ onCreateAnnotation, onCreateNote, onTranslate
     savedNotePanelElements.panel.style.left = `${left}px`
   }
 
-  // const syncToolbar = () => {
-  //   if (!hasMeaningfulSelection()) {
-  //     hideToolbar()
-  //     hidePanel()
-  //     hideNotePanel()
-  //     return
-  //   }
 
-  //   positionToolbar(toolbar)
-  // }
-//   const syncToolbar = () => {
-//   const isNotePanelOpen = notePanelElements.panel.style.display === 'block'
-
-//   if (!hasMeaningfulSelection()) {
-//     hideToolbar()
-//     hidePanel()
-
-//     if (!isNotePanelOpen) {
-//       hideNotePanel()
-//     }
-
-//     return
-//   }
-
-//   positionToolbar(toolbar)
-// }
 const syncToolbar = () => {
   if (isComposingNote) {
     return
@@ -597,15 +564,6 @@ const syncToolbar = () => {
   positionToolbar(toolbar)
 }
 
-  // noteButton.addEventListener('click', () => {
-  //   hidePanel()
-  //   hideSavedNotePanel()
-  //   notePanelElements.panel.style.display = 'block'
-  //   notePanelElements.status.textContent = '为当前划词添加笔记'
-  //   notePanelElements.status.style.color = '#9c6b2f'
-  //   positionPanel(notePanelElements.panel)
-  //   window.setTimeout(() => notePanelElements.textarea.focus(), 0)
-  // })
 
   // 改为点击“笔记”按钮后先检查是否有有效选区，如果没有则提示用户先选中文本；如果有，则将选区保存到 pendingNoteRange 中，并打开笔记输入面板
   noteButton.addEventListener('click', () => {
