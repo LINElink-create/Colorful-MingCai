@@ -3,6 +3,12 @@ import { ensureHighlightStyle } from './highlightStyle'
 const unwrapMarkElement = (element: Element) => {
   const parent = element.parentNode
 
+  element
+    .querySelectorAll('[data-mingcai-note-marker="true"]')
+    .forEach((marker) => {
+      marker.parentNode?.removeChild(marker)
+    })
+
   // 把 mark 内部的文本片段重新“拆回”父节点，然后移除包裹 mark。
   while (element.firstChild) {
     parent?.insertBefore(element.firstChild, element)
@@ -37,7 +43,7 @@ export const removeRenderedAnnotation = (annotationId: string) => {
 
 // 把一个 Range 包裹为 mark 节点并写入 annotation 标识。
 // 这里采用 extractContents + insertNode 的方式，便于后续按 annotationId 精确找到对应的高亮片段。
-export const renderAnnotationRange = (range: Range, annotationId: string, color = 'yellow') => {
+export const renderAnnotationRange = (range: Range, annotationId: string, color = 'yellow', note = '') => {
   ensureHighlightStyle()
 
   if (isAnnotationRendered(annotationId)) {
@@ -48,8 +54,24 @@ export const renderAnnotationRange = (range: Range, annotationId: string, color 
   mark.dataset.mingcaiAnnotation = 'true'
   mark.dataset.mingcaiId = annotationId
   mark.dataset.mingcaiColor = color
+  mark.dataset.mingcaiHasNote = note ? 'true' : 'false'
+
+  if (note) {
+    mark.dataset.mingcaiNote = note
+  }
 
   const fragment = range.extractContents()
+
+  if (note) {
+    const noteMarker = document.createElement('button')
+    noteMarker.type = 'button'
+    noteMarker.dataset.mingcaiNoteMarker = 'true'
+    noteMarker.dataset.mingcaiAnnotationId = annotationId
+    noteMarker.setAttribute('aria-label', '查看这段划词的笔记')
+    noteMarker.textContent = '注'
+    mark.append(noteMarker)
+  }
+
   mark.append(fragment)
   range.insertNode(mark)
 }
