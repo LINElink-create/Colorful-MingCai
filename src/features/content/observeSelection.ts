@@ -579,29 +579,29 @@ const syncToolbar = () => {
 
   // 改为点击“笔记”按钮后先检查是否有有效选区，如果没有则提示用户先选中文本；如果有，则将选区保存到 pendingNoteRange 中，并打开笔记输入面板
   noteButton.addEventListener('click', () => {
-  const selection = window.getSelection()
-  const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null
+    const selection = window.getSelection()
+    const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null
 
-  if (!range || range.collapsed || !range.toString().trim()) {
+    if (!range || range.collapsed || !range.toString().trim()) {
+      notePanelElements.panel.style.display = 'block'
+      notePanelElements.status.textContent = '请先选中一段文本再添加笔记'
+      notePanelElements.status.style.color = '#a12d22'
+      positionPanel(notePanelElements.panel)
+      return
+    }
+
+    pendingNoteRange = range.cloneRange()
+    isComposingNote = true
+
+    hidePanel()
     notePanelElements.panel.style.display = 'block'
-    notePanelElements.status.textContent = '请先选中一段文本再添加笔记'
-    notePanelElements.status.style.color = '#a12d22'
+    notePanelElements.status.textContent = '为当前划词添加笔记'
+    notePanelElements.status.style.color = '#9c6b2f'
     positionPanel(notePanelElements.panel)
-    return
-  }
 
-  pendingNoteRange = range.cloneRange()
-  isComposingNote = true
-
-  hidePanel()
-  notePanelElements.panel.style.display = 'block'
-  notePanelElements.status.textContent = '为当前划词添加笔记'
-  notePanelElements.status.style.color = '#9c6b2f'
-  positionPanel(notePanelElements.panel)
-
-  window.setTimeout(() => notePanelElements.textarea.focus(), 0)
-})
-// 监听输入法状态，避免在输入过程中同步选区导致的面板闪烁和光标丢失
+    window.setTimeout(() => notePanelElements.textarea.focus(), 0)
+  })
+  // 监听输入法状态，避免在输入过程中同步选区导致的面板闪烁和光标丢失
   translateButton.addEventListener('click', async () => {
     const selectionText = window.getSelection()?.toString().trim() ?? ''
 
