@@ -2,11 +2,6 @@ import { ANNOTATION_COLORS } from '../../shared/constants/annotationColors'
 import type { AnnotationColor } from '../../shared/types/annotation'
 import type { TranslationResult } from '../../shared/types/translation'
 
-// type ObserveSelectionOptions = {
-//   onCreateAnnotation: (color: AnnotationColor) => Promise<void> | void
-//   onCreateNote: (note: string) => Promise<void> | void
-//   onTranslateSelection: (text: string) => Promise<TranslationResult>
-// }
 type ObserveSelectionOptions = {
   onCreateAnnotation: (color: AnnotationColor) => Promise<void> | void
   onCreateNote: (range: Range, note: string) => Promise<void> | void
