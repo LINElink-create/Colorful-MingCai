@@ -1,6 +1,11 @@
 import type { ExportFormat } from '../constants/exportFormats'
 import type { AnnotationColor, ExportBundle, PageAnnotationBucket } from './annotation'
-import type { TranslationResult, TranslationSettings } from './translation'
+import type {
+  BackendConfig,
+  TranslationPreferences,
+  TranslationProviderStatus,
+  TranslationResult
+} from './translation'
 
 // 运行时消息协议：用于 popup/background/content 之间的强类型通信
 export type RuntimeMessage =
@@ -17,7 +22,7 @@ export type RuntimeMessage =
   | {
       // 将当前选中文本发送给 background 执行翻译
       type: 'TRANSLATE_SELECTION'
-      payload: { text: string }
+      payload: { text: string; pageUrl?: string; pageTitle?: string }
     }
   | {
       // 在 content 端按 annotationId 删除单条高亮
@@ -50,14 +55,29 @@ export type RuntimeMessage =
       payload: { url: string }
     }
   | {
-      // 获取翻译配置
-      type: 'GET_TRANSLATION_SETTINGS'
+      // 获取本地翻译偏好
+      type: 'GET_TRANSLATION_PREFERENCES'
       payload: Record<string, never>
     }
   | {
-      // 保存翻译配置
-      type: 'SAVE_TRANSLATION_SETTINGS'
-      payload: TranslationSettings
+      // 保存本地翻译偏好
+      type: 'SAVE_TRANSLATION_PREFERENCES'
+      payload: TranslationPreferences
+    }
+  | {
+      // 获取后端连接配置
+      type: 'GET_BACKEND_CONFIG'
+      payload: Record<string, never>
+    }
+  | {
+      // 保存后端连接配置
+      type: 'SAVE_BACKEND_CONFIG'
+      payload: BackendConfig
+    }
+  | {
+      // 获取远端翻译 provider 状态
+      type: 'GET_TRANSLATION_PROVIDER_STATUS'
+      payload: Record<string, never>
     }
 
 // 运行时消息的统一返回结构：要么 ok 并携带 data，要么 ok=false 并携带错误信息
@@ -86,6 +106,14 @@ export type TranslationResultPayload = {
   result: TranslationResult
 }
 
-export type TranslationSettingsResult = {
-  settings: TranslationSettings
+export type TranslationPreferencesResult = {
+  preferences: TranslationPreferences
+}
+
+export type BackendConfigResult = {
+  config: BackendConfig
+}
+
+export type TranslationProviderStatusResult = {
+  providers: TranslationProviderStatus[]
 }

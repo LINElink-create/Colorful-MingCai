@@ -1,44 +1,74 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
 import { TRANSLATION_LANGUAGE_OPTIONS } from '../../../src/shared/constants/translationLanguages'
-import type { TranslationSettings } from '../../../src/shared/types/translation'
+import type {
+  BackendConfig,
+  TranslationPreferences,
+  TranslationProviderStatus
+} from '../../../src/shared/types/translation'
 
 const props = defineProps<{
-  settings: TranslationSettings
+  preferences: TranslationPreferences
+  backendConfig: BackendConfig
+  providerStatuses: TranslationProviderStatus[]
   disabled: boolean
   isSaving: boolean
 }>()
 
 const emit = defineEmits<{
-  save: [settings: TranslationSettings]
+  save: [payload: { preferences: TranslationPreferences; backendConfig: BackendConfig }]
 }>()
 
-const formState = reactive<TranslationSettings>({
-  appKey: '',
-  appSecret: '',
+const formState = reactive<TranslationPreferences & Pick<BackendConfig, 'baseUrl'>>({
+  baseUrl: '',
+  defaultProvider: 'youdao',
   sourceLanguage: 'auto',
-  targetLanguage: 'zh-CHS'
+  targetLanguage: 'zh-CHS',
+  autoTranslateEnabled: false
 })
 
 watch(
-  () => props.settings,
-  (settings) => {
-    formState.appKey = settings.appKey
-    formState.appSecret = settings.appSecret
-    formState.sourceLanguage = settings.sourceLanguage
-    formState.targetLanguage = settings.targetLanguage
+  () => [props.preferences, props.backendConfig] as const,
+  ([preferences, backendConfig]) => {
+    formState.baseUrl = backendConfig.baseUrl
+    formState.defaultProvider = preferences.defaultProvider
+    formState.sourceLanguage = preferences.sourceLanguage
+    formState.targetLanguage = preferences.targetLanguage
+    formState.autoTranslateEnabled = preferences.autoTranslateEnabled
   },
   { immediate: true, deep: true }
 )
 
 const targetLanguageOptions = computed(() => TRANSLATION_LANGUAGE_OPTIONS.filter((item) => item.value !== 'auto'))
+const primaryProviderStatus = computed(() => props.providerStatuses[0] ?? null)
+const providerStatusText = computed(() => {
+  if (!primaryProviderStatus.value) {
+    return '未检测'
+  }
+
+  if (primaryProviderStatus.value.status === 'available') {
+    return primaryProviderStatus.value.userConfigured ? '个人配置可用' : '平台服务可用'
+  }
+
+  if (primaryProviderStatus.value.status === 'not_configured') {
+    return '后端未配置服务'
+  }
+
+  return '服务暂不可用'
+})
 
 const submit = () => {
   emit('save', {
-    appKey: formState.appKey.trim(),
-    appSecret: formState.appSecret.trim(),
-    sourceLanguage: formState.sourceLanguage,
-    targetLanguage: formState.targetLanguage
+    preferences: {
+      defaultProvider: formState.defaultProvider,
+      sourceLanguage: formState.sourceLanguage,
+      targetLanguage: formState.targetLanguage,
+      autoTranslateEnabled: formState.autoTranslateEnabled
+    },
+    backendConfig: {
+      ...props.backendConfig,
+      baseUrl: formState.baseUrl.trim()
+    }
   })
 }
 </script>
@@ -47,21 +77,16 @@ const submit = () => {
   <section class="settings-card">
     <div class="settings-header">
       <p>划词翻译</p>
-      <span>有道 API</span>
+      <span>{{ providerStatusText }}</span>
     </div>
 
     <p class="settings-description">
-      页面划词后可直接点击“翻译”。先在这里填写有道翻译应用 ID 与应用密钥。
+      页面划词后会通过后端服务调用翻译接口。这里配置后端地址和默认翻译方向，不再把供应商密钥保存在扩展本地。
     </p>
 
     <label class="field">
-      <span>应用 ID</span>
-      <input v-model="formState.appKey" :disabled="disabled || isSaving" autocomplete="off" spellcheck="false" type="text">
-    </label>
-
-    <label class="field">
-      <span>应用密钥</span>
-      <input v-model="formState.appSecret" :disabled="disabled || isSaving" autocomplete="off" spellcheck="false" type="password">
+      <span>后端地址</span>
+      <input v-model="formState.baseUrl" :disabled="disabled || isSaving" autocomplete="off" spellcheck="false" type="text">
     </label>
 
     <div class="field-grid">
@@ -84,8 +109,12 @@ const submit = () => {
       </label>
     </div>
 
+    <p v-if="primaryProviderStatus?.lastErrorCode" class="provider-status-note">
+      最近错误码：{{ primaryProviderStatus.lastErrorCode }}
+    </p>
+
     <button class="save-button" :disabled="disabled || isSaving" type="button" @click="submit">
-      {{ isSaving ? '保存中...' : '保存翻译配置' }}
+      {{ isSaving ? '保存中...' : '保存后端翻译配置' }}
     </button>
   </section>
 </template>
@@ -129,6 +158,12 @@ const submit = () => {
   color: #7d6a58;
   font-size: 13px;
   line-height: 1.5;
+}
+
+.provider-status-note {
+  margin: 10px 0 0;
+  color: #8a5b24;
+  font-size: 12px;
 }
 
 .field-grid {
