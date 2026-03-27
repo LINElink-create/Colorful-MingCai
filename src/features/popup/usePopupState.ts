@@ -4,9 +4,20 @@ import { EXPORT_FORMATS, type ExportFormat } from '../../shared/constants/export
 import { MESSAGE_TYPES } from '../../shared/constants/messageTypes'
 import { STORAGE_KEYS } from '../../shared/constants/storageKeys'
 import type { AnnotationRecord } from '../../shared/types/annotation'
-import type { RuntimeMessageResult, TranslationSettingsResult } from '../../shared/types/message'
+import type {
+  BackendConfigResult,
+  RuntimeMessageResult,
+  TranslationPreferencesResult,
+  TranslationProviderStatusResult
+} from '../../shared/types/message'
 import type { ActivePageInfo } from '../../shared/types/page'
-import { DEFAULT_TRANSLATION_SETTINGS, type TranslationSettings } from '../../shared/types/translation'
+import {
+  DEFAULT_BACKEND_CONFIG,
+  DEFAULT_TRANSLATION_PREFERENCES,
+  type BackendConfig,
+  type TranslationPreferences,
+  type TranslationProviderStatus
+} from '../../shared/types/translation'
 import { getActivePageInfo, openExtensionPage, reloadTabById } from '../../modules/browser/tabs'
 import { sendMessageToBackground } from '../../modules/messaging/sendToBackground'
 import { getPageKey } from '../../shared/utils/pageKey'
@@ -26,9 +37,11 @@ export const usePopupState = () => {
   const errorMessage = ref('')
   const pageInfo = ref<ActivePageInfo>(emptyPageInfo())
   const annotations = ref<AnnotationRecord[]>([])
-  const translationSettings = ref<TranslationSettings>({ ...DEFAULT_TRANSLATION_SETTINGS })
+  const translationPreferences = ref<TranslationPreferences>({ ...DEFAULT_TRANSLATION_PREFERENCES })
+  const backendConfig = ref<BackendConfig>({ ...DEFAULT_BACKEND_CONFIG })
+  const providerStatuses = ref<TranslationProviderStatus[]>([])
   const isClearConfirmOpen = ref(false)
-  const isSavingTranslationSettings = ref(false)
+  const isSavingTranslationConfig = ref(false)
   const pendingDeleteAnnotationId = ref('')
   const pendingDeleteAnnotation = ref<AnnotationRecord | null>(null)
   const isDeleteConfirmOpen = computed(() => pendingDeleteAnnotationId.value !== '')
@@ -54,9 +67,42 @@ export const usePopupState = () => {
     syncPendingDeleteAnnotation()
   }
 
-  const syncTranslationSettings = async () => {
-    const result = await sendMessageToBackground<TranslationSettingsResult>({
-      type: MESSAGE_TYPES.GET_TRANSLATION_SETTINGS,
+  const syncTranslationConfig = async () => {
+    const [preferencesResult, backendConfigResult, providerStatusResult] = await Promise.all([
+      sendMessageToBackground<TranslationPreferencesResult>({
+        type: MESSAGE_TYPES.GET_TRANSLATION_PREFERENCES,
+        payload: {}
+      }),
+      sendMessageToBackground<BackendConfigResult>({
+        type: MESSAGE_TYPES.GET_BACKEND_CONFIG,
+        payload: {}
+      }),
+      sendMessageToBackground<TranslationProviderStatusResult>({
+        type: MESSAGE_TYPES.GET_TRANSLATION_PROVIDER_STATUS,
+        payload: {}
+      })
+    ])
+
+    if (!preferencesResult.ok) {
+      throw new Error(preferencesResult.error)
+    }
+
+    if (!backendConfigResult.ok) {
+      throw new Error(backendConfigResult.error)
+    }
+
+    if (!providerStatusResult.ok) {
+      throw new Error(providerStatusResult.error)
+    }
+
+    translationPreferences.value = preferencesResult.data.preferences
+    backendConfig.value = backendConfigResult.data.config
+    providerStatuses.value = providerStatusResult.data.providers
+  }
+
+  const refreshProviderStatuses = async () => {
+    const result = await sendMessageToBackground<TranslationProviderStatusResult>({
+      type: MESSAGE_TYPES.GET_TRANSLATION_PROVIDER_STATUS,
       payload: {}
     })
 
@@ -64,7 +110,7 @@ export const usePopupState = () => {
       throw new Error(result.error)
     }
 
-    translationSettings.value = result.data.settings
+    providerStatuses.value = result.data.providers
   }
 
   const refresh = async () => {
@@ -77,11 +123,11 @@ export const usePopupState = () => {
 
       if (!pageInfo.value.url) {
         annotations.value = []
-        await syncTranslationSettings()
+        await syncTranslationConfig()
         return
       }
 
-      await Promise.all([syncAnnotationsForPage(pageInfo.value.url), syncTranslationSettings()])
+      await Promise.all([syncAnnotationsForPage(pageInfo.value.url), syncTranslationConfig()])
     } catch (error) {
       errorMessage.value = error instanceof Error ? error.message : '加载当前页数据失败'
     } finally {
@@ -228,40 +274,63 @@ export const usePopupState = () => {
     }
   }
 
-  const saveTranslationSettings = async (settings: TranslationSettings) => {
-    isSavingTranslationSettings.value = true
+  const saveTranslationConfig = async (payload: {
+    preferences: TranslationPreferences
+    backendConfig: BackendConfig
+  }) => {
+    isSavingTranslationConfig.value = true
     errorMessage.value = ''
 
     try {
-      const result = await sendMessageToBackground<TranslationSettingsResult>({
-        type: MESSAGE_TYPES.SAVE_TRANSLATION_SETTINGS,
-        payload: settings
-      })
+      const [preferencesResult, backendConfigResult] = await Promise.all([
+        sendMessageToBackground<TranslationPreferencesResult>({
+          type: MESSAGE_TYPES.SAVE_TRANSLATION_PREFERENCES,
+          payload: payload.preferences
+        }),
+        sendMessageToBackground<BackendConfigResult>({
+          type: MESSAGE_TYPES.SAVE_BACKEND_CONFIG,
+          payload: payload.backendConfig
+        })
+      ])
 
-      if (!result.ok) {
-        throw new Error(result.error)
+      if (!preferencesResult.ok) {
+        throw new Error(preferencesResult.error)
       }
 
-      translationSettings.value = result.data.settings
+      if (!backendConfigResult.ok) {
+        throw new Error(backendConfigResult.error)
+      }
+
+      translationPreferences.value = preferencesResult.data.preferences
+      backendConfig.value = backendConfigResult.data.config
+      await refreshProviderStatuses()
     } catch (error) {
       errorMessage.value = error instanceof Error ? error.message : '保存翻译配置失败'
     } finally {
-      isSavingTranslationSettings.value = false
+      isSavingTranslationConfig.value = false
     }
   }
 
   const handleStorageChanged: Parameters<typeof browser.storage.onChanged.addListener>[0] = (changes, areaName) => {
     const pageBucketsChange = changes[STORAGE_KEYS.pageBuckets]
-    const translationSettingsChange = changes[STORAGE_KEYS.translationSettings]
+    const translationPreferencesChange = changes[STORAGE_KEYS.translationPreferences]
+    const backendConfigChange = changes[STORAGE_KEYS.backendConfig]
 
     if (areaName !== 'local') {
       return
     }
 
-    if (translationSettingsChange) {
-      translationSettings.value = {
-        ...DEFAULT_TRANSLATION_SETTINGS,
-        ...((translationSettingsChange.newValue as Partial<TranslationSettings> | undefined) ?? {})
+    if (translationPreferencesChange) {
+      translationPreferences.value = {
+        ...DEFAULT_TRANSLATION_PREFERENCES,
+        ...((translationPreferencesChange.newValue as Partial<TranslationPreferences> | undefined) ?? {})
+      }
+    }
+
+    if (backendConfigChange) {
+      backendConfig.value = {
+        ...DEFAULT_BACKEND_CONFIG,
+        ...((backendConfigChange.newValue as Partial<BackendConfig> | undefined) ?? {})
       }
     }
 
@@ -290,10 +359,12 @@ export const usePopupState = () => {
     errorMessage,
     pageInfo,
     annotations,
-    translationSettings,
+    translationPreferences,
+    backendConfig,
+    providerStatuses,
     isClearConfirmOpen,
     isDeleteConfirmOpen,
-    isSavingTranslationSettings,
+    isSavingTranslationConfig,
     pendingDeleteAnnotation,
     refresh,
     requestClearCurrentPage,
@@ -305,6 +376,6 @@ export const usePopupState = () => {
     confirmRemoveAnnotation,
     exportAnnotations,
     importAnnotations,
-    saveTranslationSettings
+    saveTranslationConfig
   }
 }

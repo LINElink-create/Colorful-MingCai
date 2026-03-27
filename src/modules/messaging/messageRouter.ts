@@ -9,8 +9,9 @@ import { clearPageAnnotations, exportAnnotationBundle, getPageBucket, removeAnno
 import { downloadTextFile } from '../browser/downloads'
 import { EXPORT_FORMATS } from '../../shared/constants/exportFormats'
 import { MESSAGE_TYPES } from '../../shared/constants/messageTypes'
-import { getTranslationSettings, saveTranslationSettings } from '../translation/settingsRepository'
-import { translateWithYoudao } from '../translation/youdaoClient'
+import { getBackendConfig, saveBackendConfig } from '../translation/backendConfigRepository'
+import { translateWithBackend, getTranslationProviderStatuses } from '../translation/backendClient'
+import { getTranslationPreferences, saveTranslationPreferences } from '../translation/preferencesRepository'
 import type { RuntimeMessage, RuntimeMessageResult } from '../../shared/types/message'
 import { getPageKey } from '../../shared/utils/pageKey'
 
@@ -179,17 +180,38 @@ export const routeRuntimeMessage = async (message: RuntimeMessage, context: Rout
         return createOk({ bucket })
       }
       case MESSAGE_TYPES.TRANSLATE_SELECTION: {
-        const settings = await getTranslationSettings()
-        const result = await translateWithYoudao(message.payload.text, settings)
+        const [config, preferences] = await Promise.all([getBackendConfig(), getTranslationPreferences()])
+        const result = await translateWithBackend(
+          {
+            text: message.payload.text,
+            preferences,
+            pageUrl: message.payload.pageUrl,
+            pageTitle: message.payload.pageTitle
+          },
+          config
+        )
         return createOk({ result })
       }
-      case MESSAGE_TYPES.GET_TRANSLATION_SETTINGS: {
-        const settings = await getTranslationSettings()
-        return createOk({ settings })
+      case MESSAGE_TYPES.GET_TRANSLATION_PREFERENCES: {
+        const preferences = await getTranslationPreferences()
+        return createOk({ preferences })
       }
-      case MESSAGE_TYPES.SAVE_TRANSLATION_SETTINGS: {
-        const settings = await saveTranslationSettings(message.payload)
-        return createOk({ settings })
+      case MESSAGE_TYPES.SAVE_TRANSLATION_PREFERENCES: {
+        const preferences = await saveTranslationPreferences(message.payload)
+        return createOk({ preferences })
+      }
+      case MESSAGE_TYPES.GET_BACKEND_CONFIG: {
+        const config = await getBackendConfig()
+        return createOk({ config })
+      }
+      case MESSAGE_TYPES.SAVE_BACKEND_CONFIG: {
+        const config = await saveBackendConfig(message.payload)
+        return createOk({ config })
+      }
+      case MESSAGE_TYPES.GET_TRANSLATION_PROVIDER_STATUS: {
+        const config = await getBackendConfig()
+        const providers = await getTranslationProviderStatuses(config)
+        return createOk({ providers })
       }
       default: {
         return createError('未知消息类型')

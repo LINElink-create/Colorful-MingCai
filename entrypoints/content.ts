@@ -58,7 +58,11 @@ export default defineContentScript({
       onTranslateSelection: async (text: string) => {
         const result = await sendMessageToBackground<TranslationResultPayload>({
           type: MESSAGE_TYPES.TRANSLATE_SELECTION,
-          payload: { text }
+          payload: {
+            text,
+            pageUrl: window.location.href,
+            pageTitle: document.title
+          }
         })
 
         if (!result.ok) {

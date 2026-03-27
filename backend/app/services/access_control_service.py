@@ -1,0 +1,14 @@
+from __future__ import annotations
+
+from app.core.config import Settings
+
+
+class AccessControlService:
+    def __init__(self, settings: Settings):
+        self.settings = settings
+
+    def get_platform_quota(self) -> dict[str, int | None]:
+        return {
+            "requests_per_minute": self.settings.platform_requests_per_minute,
+            "daily_limit": self.settings.platform_daily_limit,
+        }

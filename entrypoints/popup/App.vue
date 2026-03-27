@@ -14,10 +14,12 @@ const {
   errorMessage,
   pageInfo,
   annotations,
-  translationSettings,
+  translationPreferences,
+  backendConfig,
+  providerStatuses,
   isClearConfirmOpen,
   isDeleteConfirmOpen,
-  isSavingTranslationSettings,
+  isSavingTranslationConfig,
   pendingDeleteAnnotation,
   refresh,
   requestClearCurrentPage,
@@ -29,7 +31,7 @@ const {
   confirmRemoveAnnotation,
   exportAnnotations,
   importAnnotations,
-  saveTranslationSettings
+  saveTranslationConfig
 } = usePopupState()
 </script>
 
@@ -63,10 +65,12 @@ const {
     />
 
     <TranslationSettingsCard
-      :settings="translationSettings"
+      :preferences="translationPreferences"
+      :backend-config="backendConfig"
+      :provider-statuses="providerStatuses"
       :disabled="isLoading"
-      :is-saving="isSavingTranslationSettings"
-      @save="saveTranslationSettings"
+      :is-saving="isSavingTranslationConfig"
+      @save="saveTranslationConfig"
     />
 
     <section class="card-grid">

@@ -1,0 +1,41 @@
+[project]
+name = "mingcai-backend"
+version = "0.1.0"
+description = "FastAPI backend for Mingcai translation, account groundwork, and future sync"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "fastapi>=0.116.1,<1.0.0",
+  "uvicorn[standard]>=0.35.0,<1.0.0",
+  "sqlalchemy>=2.0.43,<3.0.0",
+  "alembic>=1.16.5,<2.0.0",
+  "pymysql>=1.1.1,<2.0.0",
+  "pydantic-settings>=2.10.1,<3.0.0",
+  "httpx>=0.28.1,<1.0.0",
+  "cryptography>=45.0.7,<46.0.0"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.4.2,<9.0.0",
+  "pytest-asyncio>=1.2.0,<2.0.0",
+  "ruff>=0.13.2,<1.0.0"
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
