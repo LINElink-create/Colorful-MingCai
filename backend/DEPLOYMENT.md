@@ -90,8 +90,12 @@ timeout 5 bash -c 'cat < /dev/null > /dev/tcp/your-remote-mysql-host/3306' && ec
 
 ## GitHub Actions 所需 Secrets
 
+构建并推送镜像到 GHCR 时，工作流直接使用 GitHub Actions 自带的 `GITHUB_TOKEN`，不再依赖额外的 GHCR 推送凭据。
+
+以下 Secrets 仍然需要配置，其中 `GHCR_USERNAME` 和 `GHCR_TOKEN` 只用于服务器通过 `docker login ghcr.io` 拉取私有镜像：
+
 - `GHCR_USERNAME`：GitHub 用户名或组织机器人账号
-- `GHCR_TOKEN`：具备 `packages:write` 权限的 token
+- `GHCR_TOKEN`：具备 `read:packages` 权限的 token
 - `DEPLOY_HOST`：服务器 IP 或域名
 - `DEPLOY_PORT`：SSH 端口
 - `DEPLOY_USERNAME`：部署用户
