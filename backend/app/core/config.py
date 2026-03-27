@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     deploy_env: str = Field(default="local", alias="DEPLOY_ENV")
     server_public_base_url: str = Field(default="", alias="SERVER_PUBLIC_BASE_URL")
     trusted_proxies_raw: str = Field(default="", alias="TRUSTED_PROXIES")
+    app_port: int = Field(default=8000, alias="APP_PORT")
 
     mysql_host: str = Field(default="127.0.0.1", alias="MYSQL_HOST")
     mysql_port: int = Field(default=3306, alias="MYSQL_PORT")

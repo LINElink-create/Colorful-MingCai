@@ -9,6 +9,9 @@ from app.db.session import engine
 from app.schemas.health import HealthResponse
 from app.schemas.health import VersionResponse
 
+from app.core.config import get_settings
+from app.schemas.health import HealthResponse
+
 router = APIRouter(prefix="/health", tags=["health"])
 
 
@@ -45,4 +48,11 @@ def get_version() -> VersionResponse:
         environment=settings.app_env,
         deploy_env=settings.deploy_env,
         public_base_url=settings.server_public_base_url,
+@router.get("", response_model=HealthResponse)
+def get_health() -> HealthResponse:
+    settings = get_settings()
+    return HealthResponse(
+        status="ok",
+        app_name=settings.app_name,
+        environment=settings.app_env,
     )
