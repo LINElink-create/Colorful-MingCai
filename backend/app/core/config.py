@@ -16,6 +16,13 @@ class Settings(BaseSettings):
 
     app_name: str = Field(default="Mingcai Backend", alias="APP_NAME")
     app_env: str = Field(default="development", alias="APP_ENV")
+    app_host: str = Field(default="127.0.0.1", alias="APP_HOST")
+    app_port: int = Field(default=8000, alias="APP_PORT")
+    app_version: str = Field(default="0.1.0", alias="APP_VERSION")
+    log_level: str = Field(default="info", alias="LOG_LEVEL")
+    deploy_env: str = Field(default="local", alias="DEPLOY_ENV")
+    server_public_base_url: str = Field(default="", alias="SERVER_PUBLIC_BASE_URL")
+    trusted_proxies_raw: str = Field(default="", alias="TRUSTED_PROXIES")
     app_port: int = Field(default=8000, alias="APP_PORT")
 
     mysql_host: str = Field(default="127.0.0.1", alias="MYSQL_HOST")
@@ -43,6 +50,10 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins_raw.split(",") if origin.strip()]
+
+    @property
+    def trusted_proxies(self) -> list[str]:
+        return [proxy.strip() for proxy in self.trusted_proxies_raw.split(",") if proxy.strip()]
 
 
 @lru_cache(maxsize=1)
