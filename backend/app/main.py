@@ -10,7 +10,7 @@ from app.api.routes.translation import router as translation_router
 from app.core.config import get_settings
 
 settings = get_settings()
-app = FastAPI(title=settings.app_name, version="0.1.0")
+app = FastAPI(title=settings.app_name, version=settings.app_version)
 
 if settings.cors_origins:
     app.add_middleware(

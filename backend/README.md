@@ -47,6 +47,22 @@ uvicorn app.main:app --reload --port 8000
 
 或者直接在 IDE 中运行 `backend/run.py`。
 
+## 生产部署概览
+
+推荐使用 Docker 镜像部署后端，并通过 GitHub Actions 在 `main` 分支更新后自动发布到服务器。
+
+当前仓库已经补齐以下生产部署基础：
+
+- `Dockerfile`：用于构建后端镜像
+- `entrypoint.sh`：容器启动时自动执行 Alembic 迁移并启动服务
+- `gunicorn.conf.py`：生产进程配置
+- `deploy/compose.server.yml`：服务器侧 compose 模板
+- `.github/workflows/backend-deploy.yml`：自动测试、构建、推送、远程更新
+
+部署细节见 `DEPLOYMENT.md`。
+
+如果你的 MySQL 不在当前部署服务器，而是在另一台数据库服务器上，这套部署方式仍然适用。后端容器只需要在 `.env.production` 中把 `MYSQL_HOST` 指向远程数据库地址即可，不需要在目标服务器额外启动 MySQL 容器。
+
 如果你使用 VS Code，仓库已经提供调试配置：
 
 - 打开“运行和调试”

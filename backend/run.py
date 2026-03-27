@@ -13,8 +13,9 @@ def main() -> None:
     is_development = settings.app_env.lower() == 'development'
 
     run_kwargs = {
-        'host': '127.0.0.1',
+        'host': settings.app_host,
         'port': settings.app_port,
+        'log_level': settings.log_level,
     }
 
     if is_development:
