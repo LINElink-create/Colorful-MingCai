@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { ANNOTATION_COLORS } from '../../../src/shared/constants/annotationColors'
 import type { AnnotationRecord } from '../../../src/shared/types/annotation'
+
+const colorMetaMap = Object.fromEntries(ANNOTATION_COLORS.map((item) => [item.value, item]))
 
 defineProps<{
   annotations: AnnotationRecord[]
@@ -9,6 +12,8 @@ defineProps<{
 const emit = defineEmits<{
   remove: [annotationId: string]
 }>()
+
+const getColorMeta = (color: AnnotationRecord['color']) => colorMetaMap[color]
 </script>
 
 <!--
@@ -21,7 +26,10 @@ const emit = defineEmits<{
 <template>
   <section class="list-card">
     <div class="list-header">
-      <p>当前页摘录</p>
+      <div>
+        <p>当前页摘录</p>
+        <h3>把页面里的重点句子收进这里</h3>
+      </div>
     </div>
 
     <p v-if="isLoading" class="empty-state">正在加载标注...</p>
@@ -32,9 +40,14 @@ const emit = defineEmits<{
         <button class="remove-button" type="button" aria-label="删除当前高亮" @click="emit('remove', annotation.id)">
           ×
         </button>
+        <div class="annotation-topline">
+          <span class="color-chip" :style="{ backgroundColor: getColorMeta(annotation.color).swatch }">
+            {{ getColorMeta(annotation.color).label }}
+          </span>
+          <p class="meta">{{ new Date(annotation.createdAt).toLocaleString() }}</p>
+        </div>
         <p class="quote">{{ annotation.textQuote }}</p>
         <p v-if="annotation.note" class="note">{{ annotation.note }}</p>
-        <p class="meta">{{ new Date(annotation.createdAt).toLocaleString() }}</p>
       </li>
     </ul>
   </section>
@@ -42,10 +55,10 @@ const emit = defineEmits<{
 
 <style scoped>
 .list-card {
-  margin: 12px 0;
   padding: 14px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.76);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .list-header p,
@@ -55,9 +68,23 @@ const emit = defineEmits<{
   margin: 0;
 }
 
+.list-header h3 {
+  margin: 4px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.list-header p {
+  color: var(--mc-accent, #6366f1);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .annotation-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   list-style: none;
   padding: 0;
   margin: 12px 0 0;
@@ -65,56 +92,83 @@ const emit = defineEmits<{
 
 .annotation-list li {
   position: relative;
-  padding: 10px;
-  border-radius: 12px;
-  background: #fff8e8;
+  padding: 12px;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+  background: #f8f9fb;
+  transition: background 120ms ease;
+}
+
+.annotation-list li:hover {
+  background: #f1f5f9;
+}
+
+.annotation-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-right: 28px;
+}
+
+.color-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: var(--mc-ink, #1a1a2e);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .remove-button {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 24px;
-  height: 24px;
+  top: 10px;
+  right: 10px;
+  width: 22px;
+  height: 22px;
   border: 0;
-  border-radius: 999px;
-  background: #f3dccd;
-  color: #8b2c12;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--mc-muted, #94a3b8);
   cursor: pointer;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1;
-  transition: background 160ms ease, transform 160ms ease;
+  transition: background 120ms ease, color 120ms ease;
 }
 
 .remove-button:hover {
-  background: #efc4b1;
-  transform: scale(1.04);
+  background: var(--mc-danger-bg, #fef2f2);
+  color: var(--mc-danger-text, #dc2626);
 }
 
 .quote {
-  padding-right: 28px;
-  font-weight: 600;
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.6;
+  color: var(--mc-ink, #1a1a2e);
 }
 
 .note {
-  margin: 8px 0 0;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.7);
-  color: #5d4a39;
-  font-size: 13px;
-  line-height: 1.6;
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--mc-muted-strong, #475569);
+  font-size: 12px;
+  line-height: 1.5;
   white-space: pre-wrap;
 }
 
 .meta {
-  margin-top: 6px;
-  font-size: 12px;
-  color: #7d6a58;
+  font-size: 11px;
+  color: var(--mc-muted, #94a3b8);
 }
 
 .empty-state {
-  color: #7d6a58;
+  color: var(--mc-muted, #64748b);
   font-size: 13px;
+  line-height: 1.6;
 }
 </style>
