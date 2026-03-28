@@ -93,7 +93,10 @@ jobs:
 
       - name: Verify deployment health
         env:
-          DEPLOY_BASE_URL: ${{ secrets.DEPLOY_BASE_URL }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_USERNAME: ${{ secrets.DEPLOY_USERNAME }}
         run: |
-          curl --fail --retry 10 --retry-delay 5 "$DEPLOY_BASE_URL/v1/health"
-          curl --fail --retry 10 --retry-delay 5 "$DEPLOY_BASE_URL/v1/health/version"
+          ssh -p "$DEPLOY_PORT" -o StrictHostKeyChecking=no "$DEPLOY_USERNAME@$DEPLOY_HOST" \
+            "curl --fail --retry 10 --retry-delay 5 http://127.0.0.1:8000/v1/health && \
+            curl --fail --retry 10 --retry-delay 5 http://127.0.0.1:8000/v1/health/version"
