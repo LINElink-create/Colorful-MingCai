@@ -101,7 +101,7 @@ timeout 5 bash -c 'cat < /dev/null > /dev/tcp/your-remote-mysql-host/3306' && ec
 - `DEPLOY_USERNAME`：部署用户
 - `DEPLOY_SSH_KEY`：私钥内容
 - `DEPLOY_PATH`：服务器上的部署目录，例如 `/srv/mingcai/backend`
-- `DEPLOY_BASE_URL`：对外访问地址，例如 `https://api.example.com`
+- `DEPLOY_BASE_URL`：对外访问地址，例如 `https://api.example.com`。当前工作流不再用它做部署验活，但仍建议保留给人工验证和后续通知用途。
 
 ## 自动发布流程
 
@@ -111,7 +111,7 @@ timeout 5 bash -c 'cat < /dev/null > /dev/tcp/your-remote-mysql-host/3306' && ec
 4. 通过 SSH 到服务器执行：
    - `docker compose pull`
    - `docker compose up -d`
-5. 调用 `/v1/health` 与 `/v1/health/version` 校验部署结果
+5. 在服务器本机调用 `http://127.0.0.1:8000/v1/health` 与 `http://127.0.0.1:8000/v1/health/version` 校验部署结果
 
 ## 回滚策略
 
