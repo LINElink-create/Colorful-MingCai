@@ -1,58 +1,101 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
+import { computed, ref } from 'vue'
 import { useHistoryOverview } from '../../src/features/history/useHistoryOverview'
 
-// 历史总览页是扩展内部的独立管理页面。
-// 它负责展示“所有页面的所有摘录”，不再局限于 Popup 的当前页视角。
-const { isLoading, errorMessage, buckets, totalAnnotations, refresh, openOriginalPage, removeAnnotation, getColorMeta } =
-  useHistoryOverview()
+const {
+  isLoading,
+  errorMessage,
+  buckets,
+  totalAnnotations,
+  refresh,
+  openOriginalPage,
+  openSettingsPage,
+  removeAnnotation,
+  getColorMeta
+} = useHistoryOverview()
+
+const keyword = ref('')
+const activeColor = ref<'all' | 'yellow' | 'green' | 'blue' | 'pink'>('all')
+
+const filteredBuckets = computed(() => {
+  const normalizedKeyword = keyword.value.trim().toLowerCase()
+
+  return buckets.value
+    .map((bucket) => {
+      const filteredAnnotations = bucket.annotations.filter((annotation) => {
+        const matchesKeyword = !normalizedKeyword
+          || annotation.textQuote.toLowerCase().includes(normalizedKeyword)
+          || annotation.note?.toLowerCase().includes(normalizedKeyword)
+          || bucket.pageTitle.toLowerCase().includes(normalizedKeyword)
+          || bucket.url.toLowerCase().includes(normalizedKeyword)
+
+        const matchesColor = activeColor.value === 'all' || annotation.color === activeColor.value
+
+        return matchesKeyword && matchesColor
+      })
+
+      return { ...bucket, annotations: filteredAnnotations }
+    })
+    .filter((bucket) => bucket.annotations.length > 0)
+})
 </script>
 
 <template>
-  <main class="history-shell">
-    <header class="hero-card">
-      <div>
-        <p class="eyebrow">历史总览</p>
-        <h1>你标记过的网页与摘录</h1>
-        <p class="hero-description">集中查看所有已经保存的高亮内容，并直接打开原网页或删除某条标记。</p>
+  <main class="history-shell mc-page-shell">
+    <!-- 紧凑顶栏 -->
+    <header class="history-header">
+      <div class="header-left">
+        <h1>历史总览</h1>
+        <div class="header-stats">
+          <span><strong>{{ buckets.length }}</strong> 个站点</span>
+          <span><strong>{{ totalAnnotations }}</strong> 条高亮</span>
+        </div>
       </div>
-
-      <div class="hero-metrics">
-        <article>
-          <span>站点页面</span>
-          <strong>{{ buckets.length }}</strong>
-        </article>
-        <article>
-          <span>高亮总数</span>
-          <strong>{{ totalAnnotations }}</strong>
-        </article>
-        <button class="ghost-button" :disabled="isLoading" @click="refresh">
-          刷新总览
-        </button>
+      <div class="header-actions">
+        <button class="btn-ghost" :disabled="isLoading" @click="refresh">刷新</button>
+        <button class="btn-ghost" :disabled="isLoading" @click="openSettingsPage">设置</button>
       </div>
     </header>
 
-    <p v-if="errorMessage" class="error-message">
-      {{ errorMessage }}
-    </p>
-
-    <section v-if="!isLoading && buckets.length === 0" class="empty-panel">
-      <h2>还没有历史标记</h2>
-      <p>先去网页中划词高亮，之后这里会按站点归档显示你保存过的内容。</p>
+    <!-- 筛选栏 -->
+    <section class="filter-bar">
+      <label class="filter-field">
+        <span>关键词筛选</span>
+        <input v-model="keyword" type="text" placeholder="搜索标题、链接、摘录或备注">
+      </label>
+      <label class="filter-field filter-field-color">
+        <span>颜色</span>
+        <select v-model="activeColor">
+          <option value="all">全部颜色</option>
+          <option value="yellow">金黄</option>
+          <option value="green">青柠</option>
+          <option value="blue">雾蓝</option>
+          <option value="pink">珊瑚粉</option>
+        </select>
+      </label>
     </section>
 
+    <p v-if="errorMessage" class="error-message mc-error-message">{{ errorMessage }}</p>
+
+    <!-- 空态 -->
+    <section v-if="!isLoading && filteredBuckets.length === 0" class="empty-panel">
+      <h2>还没有历史标记</h2>
+      <p>{{ buckets.length === 0
+        ? '先去网页中划词高亮，之后这里会按站点归档显示你保存过的内容。'
+        : '当前筛选条件下没有匹配结果，试试清空关键词或切换颜色。' }}</p>
+    </section>
+
+    <!-- 分桶列表 -->
     <section v-else class="bucket-list">
-      <article v-for="bucket in buckets" :key="bucket.url" class="bucket-card">
+      <article v-for="bucket in filteredBuckets" :key="bucket.url" class="bucket-card">
         <header class="bucket-header">
           <div>
             <h2>{{ bucket.pageTitle || bucket.url }}</h2>
             <a class="bucket-link" :href="bucket.url" target="_blank" rel="noreferrer">{{ bucket.url }}</a>
           </div>
-
           <div class="bucket-actions">
             <span class="bucket-count">{{ bucket.annotations.length }} 条标记</span>
-            <button class="open-button" type="button" @click="openOriginalPage(bucket.url)">
-              打开网页
-            </button>
+            <button class="btn-open" type="button" @click="openOriginalPage(bucket.url)">打开网页</button>
           </div>
         </header>
 
@@ -64,12 +107,10 @@ const { isLoading, errorMessage, buckets, totalAnnotations, refresh, openOrigina
               </span>
               <time class="annotation-time">{{ new Date(annotation.createdAt).toLocaleString() }}</time>
             </div>
-
             <p class="annotation-quote">{{ annotation.textQuote }}</p>
             <p v-if="annotation.note" class="annotation-note">{{ annotation.note }}</p>
-
             <div class="annotation-actions">
-              <button class="delete-button" type="button" :disabled="isLoading" @click="removeAnnotation(bucket, annotation)">
+              <button class="btn-delete" type="button" :disabled="isLoading" @click="removeAnnotation(bucket, annotation)">
                 删除标记
               </button>
             </div>
@@ -83,143 +124,147 @@ const { isLoading, errorMessage, buckets, totalAnnotations, refresh, openOrigina
 <style scoped>
 .history-shell {
   min-height: 100vh;
-  padding: 28px;
-  background:
-    radial-gradient(circle at top left, rgba(255, 220, 175, 0.72), transparent 28%),
-    linear-gradient(180deg, #fffdf8 0%, #f6efe3 100%);
-  color: #2e241b;
-  font-family: "Segoe UI", "PingFang SC", sans-serif;
-}
-
-.hero-card,
-.bucket-card,
-.empty-panel {
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.84);
-  box-shadow: 0 20px 40px rgba(93, 64, 37, 0.08);
-}
-
-.hero-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1.8fr) minmax(260px, 1fr);
-  gap: 20px;
   padding: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
 }
 
-.eyebrow,
-.hero-description,
-.bucket-link,
-.annotation-time,
-.error-message,
-.empty-panel p,
-.bucket-count {
+/* 顶栏 */
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.history-header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(135deg, #f59e0b, #ef4444, #8b5cf6, #3b82f6);
+}
+
+.header-left h1 {
   margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-.eyebrow {
-  color: #9c6b2f;
+.header-stats {
+  display: flex;
+  gap: 14px;
+  margin-top: 4px;
   font-size: 12px;
-  letter-spacing: 0.1em;
+  color: var(--mc-muted, #64748b);
+}
+
+.header-stats strong {
+  color: var(--mc-accent, #6366f1);
+  font-weight: 600;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-ghost {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 14px;
+  background: #f1f5f9;
+  color: #475569;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.btn-ghost:hover { background: #e2e8f0; }
+.btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* 筛选栏 */
+.filter-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(160px, 0.8fr);
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.filter-field {
+  display: grid;
+  gap: 6px;
+}
+
+.filter-field span {
+  color: var(--mc-muted, #64748b);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
-.hero-card h1,
-.empty-panel h2,
-.bucket-card h2,
-.annotation-quote {
-  margin: 0;
-}
-
-.hero-card h1 {
-  margin-top: 8px;
-  font-size: 34px;
-  line-height: 1.15;
-}
-
-.hero-description {
-  margin-top: 12px;
-  max-width: 720px;
-  color: #6c5847;
-  line-height: 1.6;
-}
-
-.hero-metrics {
-  display: grid;
-  gap: 12px;
-}
-
-.hero-metrics article {
-  padding: 14px 16px;
-  border-radius: 18px;
-  background: linear-gradient(180deg, #fff8ec 0%, #fff2dc 100%);
-}
-
-.hero-metrics span {
-  display: block;
-  color: #8d6f58;
-  font-size: 13px;
-}
-
-.hero-metrics strong {
-  display: block;
-  margin-top: 6px;
-  font-size: 28px;
-}
-
-.ghost-button,
-.open-button,
-.delete-button {
-  border: 0;
-  border-radius: 14px;
-  padding: 11px 14px;
-  cursor: pointer;
+.filter-field input,
+.filter-field select {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 9px 12px;
+  background: #fff;
+  color: var(--mc-ink, #1a1a2e);
   font: inherit;
-  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  font-size: 13px;
+  box-sizing: border-box;
+  transition: border-color 160ms ease;
 }
 
-.ghost-button,
-.open-button {
-  background: #f0e4c6;
-  color: #47362b;
+.filter-field input:focus,
+.filter-field select:focus {
+  outline: none;
+  border-color: var(--mc-accent, #6366f1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
-.delete-button {
-  background: #f7ddd3;
-  color: #8b2c12;
-}
-
-.ghost-button:hover,
-.open-button:hover,
-.delete-button:hover {
-  transform: translateY(-1px);
-}
-
-.error-message {
-  margin-top: 16px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: #ffe3d7;
-  color: #8b2c12;
-}
-
+/* 空态 */
 .empty-panel {
-  margin-top: 20px;
+  margin-top: 16px;
   padding: 24px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
-.empty-panel p {
-  margin-top: 8px;
-  color: #6c5847;
-}
+.empty-panel h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.empty-panel p { margin: 8px 0 0; color: var(--mc-muted, #64748b); font-size: 13px; }
 
+/* 分桶列表 */
 .bucket-list {
   display: grid;
-  gap: 18px;
-  margin-top: 20px;
+  gap: 14px;
+  margin-top: 16px;
 }
 
 .bucket-card {
   padding: 20px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 .bucket-header {
@@ -229,78 +274,117 @@ const { isLoading, errorMessage, buckets, totalAnnotations, refresh, openOrigina
   gap: 16px;
 }
 
-.bucket-card h2 {
-  font-size: 22px;
-}
+.bucket-card h2 { margin: 0; font-size: 18px; font-weight: 600; }
 
 .bucket-link {
   display: inline-block;
-  margin-top: 8px;
-  color: #8d6f58;
+  margin-top: 6px;
+  color: var(--mc-muted, #64748b);
+  font-size: 13px;
   text-decoration: none;
   word-break: break-all;
 }
 
+.bucket-link:hover { color: var(--mc-accent, #6366f1); }
+
 .bucket-actions {
   display: grid;
   justify-items: end;
-  gap: 10px;
+  gap: 8px;
 }
 
 .bucket-count {
-  color: #8d6f58;
-  font-size: 13px;
+  color: var(--mc-muted, #64748b);
+  font-size: 12px;
+  font-weight: 500;
 }
 
+.btn-open {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 14px;
+  background: var(--mc-accent-soft, #eef2ff);
+  color: var(--mc-accent, #6366f1);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.btn-open:hover { background: #e0e7ff; }
+
+.btn-delete {
+  border: 0;
+  border-radius: 8px;
+  padding: 6px 12px;
+  background: var(--mc-danger-bg, #fef2f2);
+  color: var(--mc-danger-text, #dc2626);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.btn-delete:hover { background: #fee2e2; }
+.btn-delete:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* 标注列表 */
 .annotation-list {
   display: grid;
-  gap: 12px;
+  gap: 8px;
   list-style: none;
   padding: 0;
-  margin: 18px 0 0;
+  margin: 16px 0 0;
 }
 
 .annotation-item {
-  padding: 16px;
-  border-radius: 18px;
-  background: linear-gradient(180deg, #fffaf1 0%, #fff6ea 100%);
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--mc-surface-soft, #f8f9fb);
+  border-left: 3px solid transparent;
+  transition: background 120ms ease;
 }
+
+.annotation-item:hover { background: #f1f5f9; }
 
 .annotation-topline {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
 }
 
 .color-chip {
   display: inline-flex;
   align-items: center;
-  padding: 4px 10px;
+  padding: 2px 8px;
   border-radius: 999px;
-  color: #433428;
-  font-size: 12px;
-  font-weight: 700;
+  color: var(--mc-ink, #1a1a2e);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .annotation-time {
-  color: #8d6f58;
+  color: var(--mc-muted, #94a3b8);
   font-size: 12px;
 }
 
 .annotation-quote {
-  margin-top: 12px;
-  color: #2e241b;
-  font-size: 16px;
+  margin: 10px 0 0;
+  color: var(--mc-ink, #1a1a2e);
+  font-size: 14px;
   line-height: 1.6;
 }
 
 .annotation-note {
-  margin: 10px 0 0;
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.72);
-  color: #5d4a39;
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--mc-muted-strong, #475569);
+  font-size: 13px;
   line-height: 1.6;
   white-space: pre-wrap;
 }
@@ -308,26 +392,14 @@ const { isLoading, errorMessage, buckets, totalAnnotations, refresh, openOrigina
 .annotation-actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 14px;
+  margin-top: 10px;
 }
 
 @media (max-width: 880px) {
-  .history-shell {
-    padding: 16px;
-  }
-
-  .hero-card {
-    grid-template-columns: 1fr;
-  }
-
-  .bucket-header,
-  .annotation-topline {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .bucket-actions {
-    justify-items: start;
-  }
+  .history-shell { padding: 16px; }
+  .history-header { flex-direction: column; align-items: flex-start; }
+  .filter-bar { grid-template-columns: 1fr; }
+  .bucket-header, .annotation-topline { flex-direction: column; align-items: flex-start; }
+  .bucket-actions { justify-items: start; }
 }
 </style>

@@ -1,27 +1,16 @@
 import browser from 'webextension-polyfill'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { EXPORT_FORMATS, type ExportFormat } from '../../shared/constants/exportFormats'
 import { MESSAGE_TYPES } from '../../shared/constants/messageTypes'
 import { STORAGE_KEYS } from '../../shared/constants/storageKeys'
 import type { AnnotationRecord } from '../../shared/types/annotation'
-import type {
-  BackendConfigResult,
-  RuntimeMessageResult,
-  TranslationPreferencesResult,
-  TranslationProviderStatusResult
-} from '../../shared/types/message'
+import type { RuntimeMessageResult } from '../../shared/types/message'
 import type { ActivePageInfo } from '../../shared/types/page'
-import {
-  DEFAULT_BACKEND_CONFIG,
-  DEFAULT_TRANSLATION_PREFERENCES,
-  type BackendConfig,
-  type TranslationPreferences,
-  type TranslationProviderStatus
-} from '../../shared/types/translation'
+import type { TranslationPreferences } from '../../shared/types/translation'
 import { getActivePageInfo, openExtensionPage, reloadTabById } from '../../modules/browser/tabs'
 import { sendMessageToBackground } from '../../modules/messaging/sendToBackground'
 import { getPageKey } from '../../shared/utils/pageKey'
 import { loadCurrentPageAnnotations } from './useCurrentPageAnnotations'
+import { useSettingsState } from '../settings/useSettingsState'
 
 const emptyPageInfo = (): ActivePageInfo => ({
   tabId: null,
@@ -30,21 +19,19 @@ const emptyPageInfo = (): ActivePageInfo => ({
 })
 
 // Popup 的状态编排中心。
-// 这里统一管理“当前页摘要、翻译配置、导出导入、单条删除确认、清空确认、历史总览入口”等动作，
+// 这里统一管理“当前页摘要、语言偏好、单条删除确认、清空确认、历史与设置入口”等动作，
 // 让 App.vue 继续保持展示层角色，不直接耦合 tabs、storage 或 runtime message 细节。
 export const usePopupState = () => {
+  const settingsState = useSettingsState({ autoRefresh: false })
   const isLoading = ref(false)
-  const errorMessage = ref('')
+  const localErrorMessage = ref('')
   const pageInfo = ref<ActivePageInfo>(emptyPageInfo())
   const annotations = ref<AnnotationRecord[]>([])
-  const translationPreferences = ref<TranslationPreferences>({ ...DEFAULT_TRANSLATION_PREFERENCES })
-  const backendConfig = ref<BackendConfig>({ ...DEFAULT_BACKEND_CONFIG })
-  const providerStatuses = ref<TranslationProviderStatus[]>([])
   const isClearConfirmOpen = ref(false)
-  const isSavingTranslationConfig = ref(false)
   const pendingDeleteAnnotationId = ref('')
   const pendingDeleteAnnotation = ref<AnnotationRecord | null>(null)
   const isDeleteConfirmOpen = computed(() => pendingDeleteAnnotationId.value !== '')
+  const errorMessage = computed(() => localErrorMessage.value || settingsState.errorMessage.value)
 
   const syncPendingDeleteAnnotation = () => {
     pendingDeleteAnnotation.value =
@@ -67,69 +54,24 @@ export const usePopupState = () => {
     syncPendingDeleteAnnotation()
   }
 
-  const syncTranslationConfig = async () => {
-    const [preferencesResult, backendConfigResult, providerStatusResult] = await Promise.all([
-      sendMessageToBackground<TranslationPreferencesResult>({
-        type: MESSAGE_TYPES.GET_TRANSLATION_PREFERENCES,
-        payload: {}
-      }),
-      sendMessageToBackground<BackendConfigResult>({
-        type: MESSAGE_TYPES.GET_BACKEND_CONFIG,
-        payload: {}
-      }),
-      sendMessageToBackground<TranslationProviderStatusResult>({
-        type: MESSAGE_TYPES.GET_TRANSLATION_PROVIDER_STATUS,
-        payload: {}
-      })
-    ])
-
-    if (!preferencesResult.ok) {
-      throw new Error(preferencesResult.error)
-    }
-
-    if (!backendConfigResult.ok) {
-      throw new Error(backendConfigResult.error)
-    }
-
-    if (!providerStatusResult.ok) {
-      throw new Error(providerStatusResult.error)
-    }
-
-    translationPreferences.value = preferencesResult.data.preferences
-    backendConfig.value = backendConfigResult.data.config
-    providerStatuses.value = providerStatusResult.data.providers
-  }
-
-  const refreshProviderStatuses = async () => {
-    const result = await sendMessageToBackground<TranslationProviderStatusResult>({
-      type: MESSAGE_TYPES.GET_TRANSLATION_PROVIDER_STATUS,
-      payload: {}
-    })
-
-    if (!result.ok) {
-      throw new Error(result.error)
-    }
-
-    providerStatuses.value = result.data.providers
-  }
-
   const refresh = async () => {
     // 刷新 UI 所需状态：加载当前活跃标签页信息、读取对应注释，并同步翻译配置
     isLoading.value = true
-    errorMessage.value = ''
+    localErrorMessage.value = ''
+    settingsState.clearError()
 
     try {
       pageInfo.value = await getActivePageInfo()
 
       if (!pageInfo.value.url) {
         annotations.value = []
-        await syncTranslationConfig()
+        await settingsState.refresh()
         return
       }
 
-      await Promise.all([syncAnnotationsForPage(pageInfo.value.url), syncTranslationConfig()])
+      await Promise.all([syncAnnotationsForPage(pageInfo.value.url), settingsState.refresh()])
     } catch (error) {
-      errorMessage.value = error instanceof Error ? error.message : '加载当前页数据失败'
+      localErrorMessage.value = error instanceof Error ? error.message : '加载当前页数据失败'
     } finally {
       isLoading.value = false
     }
@@ -163,7 +105,7 @@ export const usePopupState = () => {
     }
 
     isLoading.value = true
-    errorMessage.value = ''
+    localErrorMessage.value = ''
 
     try {
       const result = await sendMessageToBackground({
@@ -182,49 +124,7 @@ export const usePopupState = () => {
         await reloadTabById(pageInfo.value.tabId)
       }
     } catch (error) {
-      errorMessage.value = error instanceof Error ? error.message : '清空失败'
-    } finally {
-      isLoading.value = false
-    }
-  }
-
-  const exportAnnotations = async (format: ExportFormat) => {
-    isLoading.value = true
-    errorMessage.value = ''
-
-    try {
-      const result = await sendMessageToBackground({
-        type: MESSAGE_TYPES.EXPORT_ANNOTATIONS,
-        payload: { format }
-      })
-
-      if (!result.ok) {
-        throw new Error(result.error)
-      }
-    } catch (error) {
-      errorMessage.value = error instanceof Error ? error.message : `导出 ${format || EXPORT_FORMATS.JSON} 失败`
-    } finally {
-      isLoading.value = false
-    }
-  }
-
-  const importAnnotations = async (rawText: string) => {
-    isLoading.value = true
-    errorMessage.value = ''
-
-    try {
-      const result = await sendMessageToBackground({
-        type: MESSAGE_TYPES.IMPORT_ANNOTATIONS,
-        payload: { rawText, mode: 'merge' }
-      })
-
-      if (!result.ok) {
-        throw new Error(result.error)
-      }
-
-      await refresh()
-    } catch (error) {
-      errorMessage.value = error instanceof Error ? error.message : '导入失败'
+      localErrorMessage.value = error instanceof Error ? error.message : '清空失败'
     } finally {
       isLoading.value = false
     }
@@ -232,12 +132,12 @@ export const usePopupState = () => {
 
   const removeAnnotation = async (annotationId: string) => {
     if (!pageInfo.value.tabId) {
-      errorMessage.value = '当前标签页不可用，无法删除该高亮'
+      localErrorMessage.value = '当前标签页不可用，无法删除该高亮'
       return
     }
 
     isLoading.value = true
-    errorMessage.value = ''
+    localErrorMessage.value = ''
 
     try {
       const result = (await browser.tabs.sendMessage(pageInfo.value.tabId, {
@@ -252,7 +152,7 @@ export const usePopupState = () => {
       annotations.value = result.data?.bucket?.annotations ?? []
       cancelRemoveAnnotation()
     } catch (error) {
-      errorMessage.value = error instanceof Error ? error.message : '删除高亮失败'
+      localErrorMessage.value = error instanceof Error ? error.message : '删除高亮失败'
     } finally {
       isLoading.value = false
     }
@@ -270,68 +170,29 @@ export const usePopupState = () => {
     try {
       await openExtensionPage('/history.html')
     } catch (error) {
-      errorMessage.value = error instanceof Error ? error.message : '打开历史总览失败'
+      localErrorMessage.value = error instanceof Error ? error.message : '打开历史总览失败'
     }
   }
 
-  const saveTranslationConfig = async (payload: {
-    preferences: TranslationPreferences
-    backendConfig: BackendConfig
-  }) => {
-    isSavingTranslationConfig.value = true
-    errorMessage.value = ''
-
+  const openSettingsPage = async () => {
     try {
-      const [preferencesResult, backendConfigResult] = await Promise.all([
-        sendMessageToBackground<TranslationPreferencesResult>({
-          type: MESSAGE_TYPES.SAVE_TRANSLATION_PREFERENCES,
-          payload: payload.preferences
-        }),
-        sendMessageToBackground<BackendConfigResult>({
-          type: MESSAGE_TYPES.SAVE_BACKEND_CONFIG,
-          payload: payload.backendConfig
-        })
-      ])
-
-      if (!preferencesResult.ok) {
-        throw new Error(preferencesResult.error)
-      }
-
-      if (!backendConfigResult.ok) {
-        throw new Error(backendConfigResult.error)
-      }
-
-      translationPreferences.value = preferencesResult.data.preferences
-      backendConfig.value = backendConfigResult.data.config
-      await refreshProviderStatuses()
+      await openExtensionPage('/settings.html')
     } catch (error) {
-      errorMessage.value = error instanceof Error ? error.message : '保存翻译配置失败'
-    } finally {
-      isSavingTranslationConfig.value = false
+      localErrorMessage.value = error instanceof Error ? error.message : '打开设置页面失败'
     }
+  }
+
+  const saveLanguagePreferences = async (preferences: TranslationPreferences) => {
+    settingsState.clearError()
+    localErrorMessage.value = ''
+    await settingsState.saveTranslationPreferences(preferences)
   }
 
   const handleStorageChanged: Parameters<typeof browser.storage.onChanged.addListener>[0] = (changes, areaName) => {
     const pageBucketsChange = changes[STORAGE_KEYS.pageBuckets]
-    const translationPreferencesChange = changes[STORAGE_KEYS.translationPreferences]
-    const backendConfigChange = changes[STORAGE_KEYS.backendConfig]
 
     if (areaName !== 'local') {
       return
-    }
-
-    if (translationPreferencesChange) {
-      translationPreferences.value = {
-        ...DEFAULT_TRANSLATION_PREFERENCES,
-        ...((translationPreferencesChange.newValue as Partial<TranslationPreferences> | undefined) ?? {})
-      }
-    }
-
-    if (backendConfigChange) {
-      backendConfig.value = {
-        ...DEFAULT_BACKEND_CONFIG,
-        ...((backendConfigChange.newValue as Partial<BackendConfig> | undefined) ?? {})
-      }
     }
 
     if (!pageInfo.value.url || !pageBucketsChange) {
@@ -359,23 +220,21 @@ export const usePopupState = () => {
     errorMessage,
     pageInfo,
     annotations,
-    translationPreferences,
-    backendConfig,
-    providerStatuses,
+    translationPreferences: settingsState.translationPreferences,
+    providerStatuses: settingsState.providerStatuses,
     isClearConfirmOpen,
     isDeleteConfirmOpen,
-    isSavingTranslationConfig,
+    isSavingTranslationConfig: settingsState.isSaving,
     pendingDeleteAnnotation,
     refresh,
     requestClearCurrentPage,
     cancelClearCurrentPage,
     clearCurrentPage,
     openHistoryOverview,
+    openSettingsPage,
     requestRemoveAnnotation,
     cancelRemoveAnnotation,
     confirmRemoveAnnotation,
-    exportAnnotations,
-    importAnnotations,
-    saveTranslationConfig
+    saveLanguagePreferences
   }
 }

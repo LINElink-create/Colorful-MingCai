@@ -33,6 +33,7 @@ const handleFileChange = async (event: Event) => {
 <template>
   <section class="action-card">
     <p class="action-title">导入</p>
+    <p class="action-description">用已有 JSON 归档恢复本地高亮，适合跨设备迁移。</p>
     <label class="upload-button">
       <span>{{ disabled ? '处理中...' : '选择导入文件' }}</span>
       <input :disabled="disabled" type="file" accept=".json" @change="handleFileChange" />
@@ -43,22 +44,42 @@ const handleFileChange = async (event: Event) => {
 <style scoped>
 .action-card {
   padding: 14px;
-  border-radius: 16px;
-  background: rgba(255, 248, 232, 0.8);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .action-title {
-  margin: 0 0 10px;
-  font-weight: 700;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.action-description {
+  margin: 6px 0 10px;
+  color: var(--mc-muted, #64748b);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .upload-button {
   display: block;
-  border-radius: 12px;
-  padding: 10px 12px;
-  background: #f3dfad;
+  border: 1px dashed #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: var(--mc-surface-soft, #f8f9fb);
+  color: var(--mc-muted-strong, #475569);
+  font-size: 13px;
+  font-weight: 500;
   text-align: center;
   cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.upload-button:hover {
+  border-color: var(--mc-accent, #6366f1);
+  color: var(--mc-accent, #6366f1);
+  background: var(--mc-accent-soft, #eef2ff);
 }
 
 input {

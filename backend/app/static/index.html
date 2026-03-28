@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>明彩 | 网页高亮与摘录整理工具</title>
+    <meta
+      name="description"
+      content="明彩是一个面向网页阅读场景的浏览器扩展项目，提供网页高亮、翻译辅助、摘录归档与导入导出能力。"
+    />
+    <link rel="stylesheet" href="/static/site.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <div class="brand-mark">明彩</div>
+        <p class="topbar-note">项目简介与版本规划</p>
+      </header>
+
+      <main class="content-stack">
+        <section class="hero-card card">
+          <div class="hero-copy">
+            <p class="eyebrow">项目介绍</p>
+            <h1>把网页里的重点内容，整理成可回看的高亮与摘录。</h1>
+            <p class="hero-description">
+              明彩是一款围绕网页阅读场景设计的工具型项目，当前以浏览器扩展为主要形态，聚焦网页高亮、
+              翻译辅助、摘录归档和数据导入导出。这一页用于介绍项目定位、当前能力以及后续的迭代方向。
+            </p>
+            <div class="hero-actions">
+              <a class="primary-link" href="#capabilities">查看功能概览</a>
+              <a class="secondary-link" href="#roadmap">查看未来规划</a>
+            </div>
+          </div>
+
+          <aside class="hero-panel soft-card">
+            <p class="panel-title">当前阶段</p>
+            <ul class="panel-list">
+              <li>聚焦网页阅读过程中的高亮与摘录整理</li>
+              <li>优先打磨翻译辅助与历史回看这条主链路</li>
+              <li>逐步补齐后端能力与更完整的数据管理体验</li>
+            </ul>
+            <div class="status-row">
+              <span class="status-dot"></span>
+              <span>项目持续迭代中，这里会同步更新能力概览与后续方向</span>
+            </div>
+          </aside>
+        </section>
+
+        <section id="capabilities" class="section-block">
+          <div class="section-heading">
+            <p class="eyebrow">核心能力</p>
+            <h2>围绕网页阅读与摘录整理的几项基础功能</h2>
+          </div>
+          <div class="capability-grid">
+            <article class="card capability-card">
+              <span class="chip chip-yellow">网页高亮</span>
+              <h3>划词后快速标注重点内容</h3>
+              <p>在网页中选中文本后即可进行高亮，便于后续回看和整理阅读要点。</p>
+            </article>
+            <article class="card capability-card">
+              <span class="chip chip-blue">翻译辅助</span>
+              <h3>通过后端服务获取译文结果</h3>
+              <p>在阅读外文网页时，可结合后端翻译服务查看选中文本的译文，辅助理解内容。</p>
+            </article>
+            <article class="card capability-card">
+              <span class="chip chip-green">历史归档</span>
+              <h3>集中查看已保存的网页摘录</h3>
+              <p>支持按页面查看历史高亮与备注，方便在后续复盘时快速定位来源网页。</p>
+            </article>
+            <article class="card capability-card">
+              <span class="chip chip-pink">导入导出</span>
+              <h3>支持备份与迁移本地标注</h3>
+              <p>可将本地高亮数据导出为归档文件，也可在新环境中导入已有数据继续使用。</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="section-block two-column-grid">
+          <article class="card section-card">
+            <div class="section-heading compact">
+              <p class="eyebrow">适用场景</p>
+              <h2>主要服务于个人网页阅读与资料整理</h2>
+            </div>
+            <ul class="detail-list">
+              <li>阅读文档、技术文章、课程资料时标记重点句段</li>
+              <li>在浏览外文网页时配合翻译能力辅助理解内容</li>
+              <li>将分散网页中的摘录整理为可回看的个人资料记录</li>
+            </ul>
+          </article>
+
+          <article id="roadmap" class="card section-card">
+            <div class="section-heading compact">
+              <p class="eyebrow">未来规划</p>
+              <h2>围绕阅读整理链路继续补强后续能力</h2>
+            </div>
+            <ul class="detail-list">
+              <li>继续完善翻译设置体验和后端服务稳定性</li>
+              <li>补充更细致的历史检索、筛选和整理能力</li>
+              <li>探索账号体系、云端同步与跨设备数据协同</li>
+              <li>逐步加入外观自定义和更完整的使用反馈机制</li>
+            </ul>
+          </article>
+        </section>
+
+        <section class="card project-card">
+          <div class="section-heading compact">
+            <p class="eyebrow">项目定位</p>
+            <h2>一个面向阅读整理场景的轻量工具项目</h2>
+          </div>
+          <p class="project-summary">
+            明彩的目标是让网页阅读中的高亮、摘录与翻译信息更容易保存和回看。
+            当前版本以浏览器扩展为主要形态，后端服务负责承接翻译能力和后续可扩展的基础设施。
+          </p>
+          <div class="project-meta-grid">
+            <div class="meta-item">
+              <span>项目形态</span>
+              <strong>浏览器扩展 + 后端服务</strong>
+            </div>
+            <div class="meta-item">
+              <span>主要用途</span>
+              <strong>网页高亮、摘录整理、翻译辅助</strong>
+            </div>
+            <div class="meta-item">
+              <span>当前状态</span>
+              <strong>持续迭代中的基础版本</strong>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer card">
+        <div>
+          <p class="footer-title">明彩</p>
+          <p class="footer-copy">这里会持续更新项目介绍、能力进展与版本方向，作为对外展示的基础页面。</p>
+        </div>
+        <div class="footer-meta">
+          <span>反馈方式：项目仓库 Issue / 扩展发布页</span>
+          <span>页面性质：项目介绍与规划页</span>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

@@ -1,4 +1,5 @@
 import { createApp } from 'vue'
+import '../../src/shared/styles/entrypointTheme.css'
 import App from './App.vue'
 
 // Popup 入口文件：只负责启动 Vue 应用。

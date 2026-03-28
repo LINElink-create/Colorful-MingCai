@@ -1,21 +1,15 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
+import { computed } from 'vue'
 import AnnotationList from './components/AnnotationList.vue'
-import ExportActions from './components/ExportActions.vue'
-import ImportActions from './components/ImportActions.vue'
-import PageSummaryCard from './components/PageSummaryCard.vue'
-import TranslationSettingsCard from './components/TranslationSettingsCard.vue'
+import TranslationLanguageCard from './components/TranslationLanguageCard.vue'
 import { usePopupState } from '../../src/features/popup/usePopupState'
 
-// Popup 页面只做两件事：
-// 1. 从 usePopupState 取状态和动作
-// 2. 把这些状态分发给更小的展示组件
 const {
   isLoading,
   errorMessage,
   pageInfo,
   annotations,
   translationPreferences,
-  backendConfig,
   providerStatuses,
   isClearConfirmOpen,
   isDeleteConfirmOpen,
@@ -26,119 +20,111 @@ const {
   cancelClearCurrentPage,
   clearCurrentPage,
   openHistoryOverview,
+  openSettingsPage,
   requestRemoveAnnotation,
   cancelRemoveAnnotation,
   confirmRemoveAnnotation,
-  exportAnnotations,
-  importAnnotations,
-  saveTranslationConfig
+  saveLanguagePreferences
 } = usePopupState()
+
+const pageTitle = computed(() => pageInfo.value.title || '未识别页面')
+
+const annotationCountText = computed(() => {
+  if (isLoading.value) return '同步中…'
+  return ` 条高亮`
+})
+
+const providerTone = computed(() => {
+  const s = providerStatuses.value[0]
+  if (!s) return 'status-idle'
+  if (s.status === 'available') return 'status-ready'
+  if (s.status === 'not_configured') return 'status-warn'
+  return 'status-error'
+})
+
+const providerText = computed(() => {
+  const s = providerStatuses.value[0]
+  if (!s) return '翻译未检测'
+  if (s.status === 'available') return s.userConfigured ? '个人翻译可用' : '后端翻译可用'
+  if (s.status === 'not_configured') return '翻译未配置'
+  return '翻译不可用'
+})
 </script>
 
-<!--
-  说明：
-  - 该组件是整个扩展弹窗的总装层
-  - 页面中的“刷新、导出、导入、历史总览、单条删除、清空”都不会直接碰浏览器 API，而是交给 composable 处理
--->
-
 <template>
-  <main class="popup-shell">
-    <header class="popup-header">
-      <div>
-        <p class="eyebrow">MVP</p>
+  <main class="popup-shell mc-page-shell">
+    <!-- 顶栏 -->
+    <header class="toolbar">
+      <div class="toolbar-brand">
         <h1>明彩</h1>
+        <span class="toolbar-page" :title="pageInfo.url">{{ pageTitle }}</span>
       </div>
-      <button class="ghost-button" :disabled="isLoading" @click="refresh">
-        刷新
-      </button>
+      <div class="toolbar-actions">
+        <span class="toolbar-count">{{ annotationCountText }}</span>
+        <button class="icon-btn" :disabled="isLoading" title="刷新" @click="refresh">⟳</button>
+        <button class="icon-btn" :disabled="isLoading" title="历史总览" @click="openHistoryOverview">📋</button>
+        <button class="icon-btn" :disabled="isLoading" title="设置" @click="openSettingsPage">⚙</button>
+        <button
+          class="icon-btn icon-btn-danger"
+          :disabled="isLoading || annotations.length === 0"
+          title="清空当前页高亮"
+          @click="requestClearCurrentPage"
+        >🗑</button>
+      </div>
     </header>
 
-    <p v-if="errorMessage" class="error-message">
-      {{ errorMessage }}
-    </p>
-
-    <PageSummaryCard
-      :page-title="pageInfo.title"
-      :page-url="pageInfo.url"
-      :annotation-count="annotations.length"
-      :is-loading="isLoading"
-    />
-
-    <TranslationSettingsCard
+    <!-- 语言条 -->
+    <TranslationLanguageCard
       :preferences="translationPreferences"
-      :backend-config="backendConfig"
-      :provider-statuses="providerStatuses"
       :disabled="isLoading"
       :is-saving="isSavingTranslationConfig"
-      @save="saveTranslationConfig"
+      @save="saveLanguagePreferences"
     />
 
-    <section class="card-grid">
-      <ExportActions :disabled="isLoading" @export="exportAnnotations" />
-      <ImportActions :disabled="isLoading" @import="importAnnotations" />
-    </section>
+    <!-- 翻译状态 -->
+    <div class="status-row">
+      <span :class="['status-dot', providerTone]"></span>
+      <span class="status-text">{{ providerText }}</span>
+    </div>
 
-    <button class="history-button" :disabled="isLoading" @click="openHistoryOverview">
-      打开历史总览
-    </button>
+    <!-- 错误 -->
+    <p v-if="errorMessage" class="error-message mc-error-message">{{ errorMessage }}</p>
 
+    <!-- 标注列表 -->
     <AnnotationList :annotations="annotations" :is-loading="isLoading" @remove="requestRemoveAnnotation" />
 
-    <button class="danger-button" :disabled="isLoading || annotations.length === 0" @click="requestClearCurrentPage">
-      清空当前页高亮
-    </button>
-
+    <!-- 清空确认弹窗 -->
     <div v-if="isClearConfirmOpen" class="confirm-overlay" @click="cancelClearCurrentPage">
       <section class="confirm-dialog" @click.stop>
-        <p class="confirm-badge">需要确认的操作</p>
-        <h2>确认清空当前页高亮？</h2>
-        <p class="confirm-description">
-          这会移除当前页面已保存的全部高亮，并自动刷新页面以应用最新状态。
-        </p>
-
+        <p class="confirm-badge">需要确认</p>
+        <h2>清空当前页全部高亮？</h2>
+        <p class="confirm-desc">这会移除该页面所有高亮并自动刷新页面。</p>
         <div class="confirm-meta">
-          <p>
-            <span>页面</span>
-            <strong>{{ pageInfo.title || pageInfo.url || '未识别页面' }}</strong>
-          </p>
-          <p>
-            <span>高亮数量</span>
-            <strong>{{ annotations.length }}</strong>
-          </p>
+          <p><span>页面</span><strong>{{ pageInfo.title || pageInfo.url || '未识别' }}</strong></p>
+          <p><span>数量</span><strong>{{ annotations.length }}</strong></p>
         </div>
-
         <div class="confirm-actions">
-          <button class="secondary-button" :disabled="isLoading" @click="cancelClearCurrentPage">
-            取消
-          </button>
-          <button class="confirm-button" :disabled="isLoading" @click="clearCurrentPage">
-            {{ isLoading ? '清空中...' : '确认清空' }}
+          <button class="btn-secondary" :disabled="isLoading" @click="cancelClearCurrentPage">取消</button>
+          <button class="btn-danger" :disabled="isLoading" @click="clearCurrentPage">
+            {{ isLoading ? '清空中…' : '确认清空' }}
           </button>
         </div>
       </section>
     </div>
 
+    <!-- 删除确认弹窗 -->
     <div v-if="isDeleteConfirmOpen" class="confirm-overlay" @click="cancelRemoveAnnotation">
-      <section class="confirm-dialog confirm-dialog-delete" @click.stop>
-        <p class="confirm-badge confirm-badge-delete">删除单条高亮</p>
-        <h2>确认删除这条摘录？</h2>
-        <p class="confirm-description">
-          这会删除当前页面中的对应高亮，同时从本地保存记录中移除这一项。
-        </p>
-
+      <section class="confirm-dialog" @click.stop>
+        <p class="confirm-badge">删除确认</p>
+        <h2>删除这条摘录？</h2>
+        <p class="confirm-desc">将从本地记录中移除该高亮。</p>
         <div class="confirm-meta">
-          <p>
-            <span>摘录内容</span>
-            <strong>{{ pendingDeleteAnnotation?.textQuote || '未找到待删除内容' }}</strong>
-          </p>
+          <p><span>内容</span><strong>{{ pendingDeleteAnnotation?.textQuote || '未找到' }}</strong></p>
         </div>
-
         <div class="confirm-actions">
-          <button class="secondary-button" :disabled="isLoading" @click="cancelRemoveAnnotation">
-            取消
-          </button>
-          <button class="confirm-button confirm-button-delete" :disabled="isLoading" @click="confirmRemoveAnnotation">
-            {{ isLoading ? '删除中...' : '确认删除' }}
+          <button class="btn-secondary" :disabled="isLoading" @click="cancelRemoveAnnotation">取消</button>
+          <button class="btn-danger" :disabled="isLoading" @click="confirmRemoveAnnotation">
+            {{ isLoading ? '删除中…' : '确认删除' }}
           </button>
         </div>
       </section>
@@ -150,185 +136,214 @@ const {
 .popup-shell {
   position: relative;
   width: 360px;
-  min-height: 520px;
-  padding: 16px;
-  background: linear-gradient(180deg, #fffdf7 0%, #fff6dd 100%);
-  color: #2b2118;
-  font-family: "Segoe UI", "PingFang SC", sans-serif;
+  min-height: 480px;
+  padding: 0;
+  background: var(--mc-page-bg, #f8f9fb);
 }
 
-.popup-header {
+/* 顶栏 */
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px 10px;
+  background: #fff;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.toolbar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(135deg, #f59e0b, #ef4444, #8b5cf6, #3b82f6);
+}
+
+.toolbar-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.toolbar-brand h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.toolbar-page {
+  font-size: 12px;
+  color: var(--mc-muted, #64748b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.toolbar-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
+  gap: 4px;
 }
 
-.popup-header h1 {
-  margin: 0;
-  font-size: 24px;
+.toolbar-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mc-accent, #6366f1);
+  margin-right: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--mc-accent-soft, #eef2ff);
 }
 
-.eyebrow {
-  margin: 0 0 4px;
-  color: #9c6b2f;
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.card-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-  margin: 12px 0;
-}
-
-.ghost-button,
-.history-button,
-.danger-button,
-.secondary-button,
-.confirm-button {
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
   border: 0;
-  border-radius: 12px;
-  padding: 10px 14px;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 15px;
   cursor: pointer;
-  font: inherit;
-  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  flex-shrink: 0;
+  transition: background 120ms ease;
 }
 
-.ghost-button {
-  background: #f0e4c6;
+.icon-btn:hover { background: #f1f5f9; }
+.icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.icon-btn-danger:hover:not(:disabled) { background: var(--mc-danger-bg, #fef2f2); }
+
+/* 翻译状态行 */
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 14px 6px;
 }
 
-.danger-button {
-  width: 100%;
-  background: #2b2118;
-  color: #fff8e8;
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
-.history-button {
-  width: 100%;
-  margin-bottom: 12px;
-  background: linear-gradient(135deg, #efe0b7 0%, #e1c987 100%);
-  color: #4d3825;
-  box-shadow: 0 10px 20px rgba(171, 133, 55, 0.16);
+.status-ready { background: #22c55e; }
+.status-idle  { background: #94a3b8; }
+.status-warn  { background: #f59e0b; }
+.status-error { background: #ef4444; }
+
+.status-text {
+  font-size: 11px;
+  color: var(--mc-muted, #64748b);
 }
 
-.secondary-button {
-  background: #f5ecd8;
-  color: #574537;
-}
-
-.confirm-button {
-  background: linear-gradient(135deg, #b23a1d 0%, #7d1c10 100%);
-  color: #fff7f0;
-  box-shadow: 0 10px 24px rgba(125, 28, 16, 0.24);
-}
-
-.confirm-button-delete {
-  background: linear-gradient(135deg, #a12d22 0%, #6f1813 100%);
-}
-
-.ghost-button:hover,
-.history-button:hover,
-.danger-button:hover,
-.secondary-button:hover,
-.confirm-button:hover {
-  transform: translateY(-1px);
-}
-
+/* 确认弹窗 */
 .confirm-overlay {
   position: absolute;
   inset: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
-  background: rgba(43, 33, 24, 0.3);
-  backdrop-filter: blur(6px);
+  background: rgba(15, 15, 26, 0.25);
+  backdrop-filter: blur(8px);
 }
 
 .confirm-dialog {
   width: 100%;
   padding: 18px;
-  border: 1px solid rgba(125, 28, 16, 0.14);
-  border-radius: 20px;
-  background: linear-gradient(180deg, #fff8ef 0%, #fff2e4 100%);
-  box-shadow: 0 22px 44px rgba(79, 44, 18, 0.18);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.12);
 }
 
 .confirm-badge {
   display: inline-flex;
-  margin: 0 0 10px;
-  padding: 4px 10px;
+  margin: 0 0 6px;
+  padding: 2px 8px;
   border-radius: 999px;
-  background: #fce1d7;
-  color: #9a321b;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-}
-
-.confirm-badge-delete {
-  background: #f6ddd8;
-  color: #8d2d1f;
+  background: var(--mc-danger-bg, #fef2f2);
+  color: var(--mc-danger-text, #dc2626);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .confirm-dialog h2 {
   margin: 0;
-  font-size: 22px;
-  line-height: 1.2;
+  font-size: 16px;
+  font-weight: 600;
 }
 
-.confirm-dialog-delete {
-  border-color: rgba(120, 32, 23, 0.16);
-}
-
-.confirm-description {
-  margin: 10px 0 14px;
-  color: #6d5646;
-  font-size: 13px;
+.confirm-desc {
+  margin: 6px 0 12px;
+  color: var(--mc-muted);
+  font-size: 12px;
   line-height: 1.5;
 }
 
 .confirm-meta {
   display: grid;
-  gap: 10px;
-  margin-bottom: 16px;
+  gap: 6px;
+  margin-bottom: 14px;
 }
 
 .confirm-meta p {
   display: grid;
-  gap: 4px;
+  gap: 2px;
   margin: 0;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.72);
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f8f9fb;
 }
 
 .confirm-meta span {
-  color: #8b6f5d;
-  font-size: 12px;
+  color: var(--mc-muted);
+  font-size: 10px;
+  font-weight: 500;
 }
 
 .confirm-meta strong {
-  color: #2b2118;
-  font-size: 13px;
+  color: var(--mc-ink);
+  font-size: 12px;
+  font-weight: 500;
   word-break: break-word;
 }
 
 .confirm-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 8px;
 }
 
-.error-message {
-  margin: 0 0 12px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: #ffe3d7;
-  color: #8b2c12;
+.btn-secondary,
+.btn-danger {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms ease;
 }
+
+.btn-secondary { background: #f1f5f9; color: #475569; }
+.btn-secondary:hover { background: #e2e8f0; }
+.btn-danger { background: #dc2626; color: #fff; }
+.btn-danger:hover { background: #b91c1c; }
+.btn-secondary:disabled,
+.btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

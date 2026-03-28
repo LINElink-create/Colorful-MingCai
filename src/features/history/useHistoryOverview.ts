@@ -1,8 +1,10 @@
 import browser from 'webextension-polyfill'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { removeAnnotationsByIds, listPageBuckets } from '../../modules/annotations/repository/annotationRepository'
-import { findTabIdsByPageUrl, openTab } from '../../modules/browser/tabs'
+import { EXPORT_FORMATS, type ExportFormat } from '../../shared/constants/exportFormats'
+import { findTabIdsByPageUrl, openExtensionPage, openTab } from '../../modules/browser/tabs'
 import { sendMessageToTab } from '../../modules/messaging/sendToActiveTab'
+import { sendMessageToBackground } from '../../modules/messaging/sendToBackground'
 import { MESSAGE_TYPES } from '../../shared/constants/messageTypes'
 import { STORAGE_KEYS } from '../../shared/constants/storageKeys'
 import { ANNOTATION_COLORS } from '../../shared/constants/annotationColors'
@@ -37,8 +39,54 @@ export const useHistoryOverview = () => {
     return buckets.value.reduce((total, bucket) => total + bucket.annotations.length, 0)
   })
 
+  const exportAnnotations = async (format: ExportFormat) => {
+    isLoading.value = true
+    errorMessage.value = ''
+
+    try {
+      const result = await sendMessageToBackground({
+        type: MESSAGE_TYPES.EXPORT_ANNOTATIONS,
+        payload: { format }
+      })
+
+      if (!result.ok) {
+        throw new Error(result.error)
+      }
+    } catch (error) {
+      errorMessage.value = error instanceof Error ? error.message : `导出 ${format || EXPORT_FORMATS.JSON} 失败`
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const importAnnotations = async (rawText: string) => {
+    isLoading.value = true
+    errorMessage.value = ''
+
+    try {
+      const result = await sendMessageToBackground({
+        type: MESSAGE_TYPES.IMPORT_ANNOTATIONS,
+        payload: { rawText, mode: 'merge' }
+      })
+
+      if (!result.ok) {
+        throw new Error(result.error)
+      }
+
+      await refresh()
+    } catch (error) {
+      errorMessage.value = error instanceof Error ? error.message : '导入失败'
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   const openOriginalPage = async (url: string) => {
     await openTab(url)
+  }
+
+  const openSettingsPage = async () => {
+    await openExtensionPage('/settings.html')
   }
 
   const syncRemoveFromOpenTabs = async (url: string, annotationId: string) => {
@@ -104,7 +152,10 @@ export const useHistoryOverview = () => {
     buckets,
     totalAnnotations,
     refresh,
+    exportAnnotations,
+    importAnnotations,
     openOriginalPage,
+    openSettingsPage,
     removeAnnotation,
     getColorMeta
   }
