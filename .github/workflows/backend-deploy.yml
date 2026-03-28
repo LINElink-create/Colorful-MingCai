@@ -98,5 +98,19 @@ jobs:
           DEPLOY_USERNAME: ${{ secrets.DEPLOY_USERNAME }}
         run: |
           ssh -p "$DEPLOY_PORT" -o StrictHostKeyChecking=no "$DEPLOY_USERNAME@$DEPLOY_HOST" \
-            "curl --fail --retry 10 --retry-delay 5 http://127.0.0.1:8000/v1/health && \
-            curl --fail --retry 10 --retry-delay 5 http://127.0.0.1:8000/v1/health/version"
+            'for endpoint in /v1/health /v1/health/version; do
+              attempt=1
+              until [ "$attempt" -gt 12 ]; do
+                response=$(curl --silent --show-error --fail http://127.0.0.1:8000${endpoint} 2>/tmp/mingcai-health.err) && break
+                cat /tmp/mingcai-health.err
+                sleep 5
+                attempt=$((attempt + 1))
+              done
+
+              if [ "$attempt" -gt 12 ]; then
+                echo "Health verification failed for ${endpoint}" >&2
+                exit 1
+              fi
+
+              echo "$response"
+            done'
