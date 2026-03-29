@@ -53,6 +53,7 @@ export default defineContentScript({
         }
 
         await saveAnnotation(annotation)
+
         window.getSelection()?.removeAllRanges()
       },
       onTranslateSelection: async (text: string) => {

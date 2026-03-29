@@ -20,6 +20,11 @@ export type RuntimeMessage =
       payload: { color?: AnnotationColor; note?: string }
     }
   | {
+      // 在 content 端滚动并定位到指定 annotation
+      type: 'NAVIGATE_TO_ANNOTATION'
+      payload: { annotationId: string }
+    }
+  | {
       // 将当前选中文本发送给 background 执行翻译
       type: 'TRANSLATE_SELECTION'
       payload: { text: string; pageUrl?: string; pageTitle?: string }

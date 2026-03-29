@@ -7,6 +7,7 @@ const {
   errorMessage,
   buckets,
   totalAnnotations,
+  totalNotes,
   refresh,
   openOriginalPage,
   openSettingsPage,
@@ -17,17 +18,29 @@ const {
 const keyword = ref('')
 const activeColor = ref<'all' | 'yellow' | 'green' | 'blue' | 'pink'>('all')
 
+const normalizeSearchValue = (value?: string) => {
+  return (value ?? '').trim().toLowerCase()
+}
+
 const filteredBuckets = computed(() => {
-  const normalizedKeyword = keyword.value.trim().toLowerCase()
+  const normalizedKeyword = normalizeSearchValue(keyword.value)
 
   return buckets.value
     .map((bucket) => {
+      const bucketTitle = normalizeSearchValue(bucket.pageTitle)
+      const bucketUrl = normalizeSearchValue(bucket.url)
+
       const filteredAnnotations = bucket.annotations.filter((annotation) => {
+        const annotationQuote = normalizeSearchValue(annotation.textQuote)
+        const annotationNote = normalizeSearchValue(annotation.note)
+        const colorLabel = normalizeSearchValue(getColorMeta(annotation.color).label)
+
         const matchesKeyword = !normalizedKeyword
-          || annotation.textQuote.toLowerCase().includes(normalizedKeyword)
-          || annotation.note?.toLowerCase().includes(normalizedKeyword)
-          || bucket.pageTitle.toLowerCase().includes(normalizedKeyword)
-          || bucket.url.toLowerCase().includes(normalizedKeyword)
+          || annotationQuote.includes(normalizedKeyword)
+          || annotationNote.includes(normalizedKeyword)
+          || bucketTitle.includes(normalizedKeyword)
+          || bucketUrl.includes(normalizedKeyword)
+          || colorLabel.includes(normalizedKeyword)
 
         const matchesColor = activeColor.value === 'all' || annotation.color === activeColor.value
 
@@ -49,6 +62,7 @@ const filteredBuckets = computed(() => {
         <div class="header-stats">
           <span><strong>{{ buckets.length }}</strong> 个站点</span>
           <span><strong>{{ totalAnnotations }}</strong> 条高亮</span>
+          <span><strong>{{ totalNotes }}</strong> 条笔记</span>
         </div>
       </div>
       <div class="header-actions">
@@ -61,7 +75,7 @@ const filteredBuckets = computed(() => {
     <section class="filter-bar">
       <label class="filter-field">
         <span>关键词筛选</span>
-        <input v-model="keyword" type="text" placeholder="搜索标题、链接、摘录或备注">
+        <input v-model="keyword" type="text" placeholder="搜索标题、链接、摘录、备注或颜色">
       </label>
       <label class="filter-field filter-field-color">
         <span>颜色</span>
@@ -79,9 +93,9 @@ const filteredBuckets = computed(() => {
 
     <!-- 空态 -->
     <section v-if="!isLoading && filteredBuckets.length === 0" class="empty-panel">
-      <h2>还没有历史标记</h2>
+      <h2>还没有历史高亮</h2>
       <p>{{ buckets.length === 0
-        ? '先去网页中划词高亮，之后这里会按站点归档显示你保存过的内容。'
+        ? '先去网页中划词高亮，或给高亮补充笔记，之后这里会按站点归档显示你保存过的内容。'
         : '当前筛选条件下没有匹配结果，试试清空关键词或切换颜色。' }}</p>
     </section>
 
@@ -94,7 +108,7 @@ const filteredBuckets = computed(() => {
             <a class="bucket-link" :href="bucket.url" target="_blank" rel="noreferrer">{{ bucket.url }}</a>
           </div>
           <div class="bucket-actions">
-            <span class="bucket-count">{{ bucket.annotations.length }} 条标记</span>
+            <span class="bucket-count">{{ bucket.annotations.length }} 条高亮 / {{ bucket.annotations.filter((annotation) => annotation.note?.trim()).length }} 条笔记</span>
             <button class="btn-open" type="button" @click="openOriginalPage(bucket.url)">打开网页</button>
           </div>
         </header>
@@ -111,7 +125,7 @@ const filteredBuckets = computed(() => {
             <p v-if="annotation.note" class="annotation-note">{{ annotation.note }}</p>
             <div class="annotation-actions">
               <button class="btn-delete" type="button" :disabled="isLoading" @click="removeAnnotation(bucket, annotation)">
-                删除标记
+                删除高亮
               </button>
             </div>
           </li>

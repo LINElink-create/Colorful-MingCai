@@ -39,6 +39,12 @@ export const useHistoryOverview = () => {
     return buckets.value.reduce((total, bucket) => total + bucket.annotations.length, 0)
   })
 
+  const totalNotes = computed(() => {
+    return buckets.value.reduce((total, bucket) => {
+      return total + bucket.annotations.filter((annotation) => annotation.note?.trim()).length
+    }, 0)
+  })
+
   const exportAnnotations = async (format: ExportFormat) => {
     isLoading.value = true
     errorMessage.value = ''
@@ -118,7 +124,7 @@ export const useHistoryOverview = () => {
       await syncRemoveFromOpenTabs(bucket.url, annotation.id)
       await refresh()
     } catch (error) {
-      errorMessage.value = error instanceof Error ? error.message : '删除历史标记失败'
+      errorMessage.value = error instanceof Error ? error.message : '删除历史高亮失败'
     } finally {
       isLoading.value = false
     }
@@ -151,6 +157,7 @@ export const useHistoryOverview = () => {
     errorMessage,
     buckets,
     totalAnnotations,
+    totalNotes,
     refresh,
     exportAnnotations,
     importAnnotations,

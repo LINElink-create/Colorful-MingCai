@@ -13,7 +13,6 @@ export const buildMarkdownExport = (bundle: ExportBundle) => {
     lines.push('')
 
     for (const annotation of bucket.annotations) {
-      // 当前版本只导出摘录正文，后续可以扩展颜色、备注、创建时间等字段。
       lines.push(`- ${annotation.textQuote}`)
     }
 

@@ -21,6 +21,7 @@ const {
   clearCurrentPage,
   openHistoryOverview,
   openSettingsPage,
+  jumpToAnnotation,
   requestRemoveAnnotation,
   cancelRemoveAnnotation,
   confirmRemoveAnnotation,
@@ -29,9 +30,13 @@ const {
 
 const pageTitle = computed(() => pageInfo.value.title || '未识别页面')
 
+const noteCount = computed(() => {
+  return annotations.value.filter((annotation) => annotation.note?.trim()).length
+})
+
 const annotationCountText = computed(() => {
   if (isLoading.value) return '同步中…'
-  return ` 条高亮`
+  return `${annotations.value.length} 条高亮 / ${noteCount.value} 条笔记`
 })
 
 const providerTone = computed(() => {
@@ -67,7 +72,7 @@ const providerText = computed(() => {
         <button
           class="icon-btn icon-btn-danger"
           :disabled="isLoading || annotations.length === 0"
-          title="清空当前页高亮"
+          title="清空当前页高亮与笔记"
           @click="requestClearCurrentPage"
         >🗑</button>
       </div>
@@ -91,14 +96,19 @@ const providerText = computed(() => {
     <p v-if="errorMessage" class="error-message mc-error-message">{{ errorMessage }}</p>
 
     <!-- 标注列表 -->
-    <AnnotationList :annotations="annotations" :is-loading="isLoading" @remove="requestRemoveAnnotation" />
+    <AnnotationList
+      :annotations="annotations"
+      :is-loading="isLoading"
+      @jump="jumpToAnnotation"
+      @remove="requestRemoveAnnotation"
+    />
 
     <!-- 清空确认弹窗 -->
     <div v-if="isClearConfirmOpen" class="confirm-overlay" @click="cancelClearCurrentPage">
       <section class="confirm-dialog" @click.stop>
         <p class="confirm-badge">需要确认</p>
-        <h2>清空当前页全部高亮？</h2>
-        <p class="confirm-desc">这会移除该页面所有高亮并自动刷新页面。</p>
+        <h2>清空当前页全部高亮与笔记？</h2>
+        <p class="confirm-desc">这会移除该页面所有高亮及其附加笔记，并自动刷新页面。</p>
         <div class="confirm-meta">
           <p><span>页面</span><strong>{{ pageInfo.title || pageInfo.url || '未识别' }}</strong></p>
           <p><span>数量</span><strong>{{ annotations.length }}</strong></p>
@@ -116,8 +126,8 @@ const providerText = computed(() => {
     <div v-if="isDeleteConfirmOpen" class="confirm-overlay" @click="cancelRemoveAnnotation">
       <section class="confirm-dialog" @click.stop>
         <p class="confirm-badge">删除确认</p>
-        <h2>删除这条摘录？</h2>
-        <p class="confirm-desc">将从本地记录中移除该高亮。</p>
+        <h2>删除这条高亮？</h2>
+        <p class="confirm-desc">将从本地记录中移除该高亮及其附加笔记。</p>
         <div class="confirm-meta">
           <p><span>内容</span><strong>{{ pendingDeleteAnnotation?.textQuote || '未找到' }}</strong></p>
         </div>

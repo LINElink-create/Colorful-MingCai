@@ -8,6 +8,7 @@ import type { ActivePageInfo } from '../../shared/types/page'
 import type { TranslationPreferences } from '../../shared/types/translation'
 import { getActivePageInfo, openExtensionPage, reloadTabById } from '../../modules/browser/tabs'
 import { sendMessageToBackground } from '../../modules/messaging/sendToBackground'
+import { sendMessageToTab } from '../../modules/messaging/sendToActiveTab'
 import { getPageKey } from '../../shared/utils/pageKey'
 import { loadCurrentPageAnnotations } from './useCurrentPageAnnotations'
 import { useSettingsState } from '../settings/useSettingsState'
@@ -132,7 +133,7 @@ export const usePopupState = () => {
 
   const removeAnnotation = async (annotationId: string) => {
     if (!pageInfo.value.tabId) {
-      localErrorMessage.value = '当前标签页不可用，无法删除该高亮'
+      localErrorMessage.value = '当前标签页不可用，无法删除这条高亮'
       return
     }
 
@@ -164,6 +165,33 @@ export const usePopupState = () => {
     }
 
     await removeAnnotation(pendingDeleteAnnotationId.value)
+  }
+
+  const jumpToAnnotation = async (annotation: AnnotationRecord) => {
+    if (pageInfo.value.tabId === null) {
+      localErrorMessage.value = '当前标签页不可用，无法跳转到这条高亮'
+      return
+    }
+
+    isLoading.value = true
+    localErrorMessage.value = ''
+
+    try {
+      const result = await sendMessageToTab(pageInfo.value.tabId, {
+        type: MESSAGE_TYPES.NAVIGATE_TO_ANNOTATION,
+        payload: { annotationId: annotation.id }
+      }) as RuntimeMessageResult
+
+      if (!result.ok) {
+        throw new Error(result.error)
+      }
+
+      window.close()
+    } catch (error) {
+      localErrorMessage.value = error instanceof Error ? error.message : '跳转到高亮位置失败'
+    } finally {
+      isLoading.value = false
+    }
   }
 
   const openHistoryOverview = async () => {
@@ -232,6 +260,7 @@ export const usePopupState = () => {
     clearCurrentPage,
     openHistoryOverview,
     openSettingsPage,
+    jumpToAnnotation,
     requestRemoveAnnotation,
     cancelRemoveAnnotation,
     confirmRemoveAnnotation,

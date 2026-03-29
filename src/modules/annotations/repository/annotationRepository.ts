@@ -1,16 +1,71 @@
 import browser from 'webextension-polyfill'
 import { CURRENT_SCHEMA_VERSION, STORAGE_KEYS } from '../../../shared/constants/storageKeys'
-import type { AnnotationRecord, ExportBundle, ImportMode, PageAnnotationBucket } from '../../../shared/types/annotation'
+import type { AnnotationColor, AnnotationRecord, ExportBundle, ImportMode, PageAnnotationBucket } from '../../../shared/types/annotation'
 import { nowIsoString } from '../../../shared/utils/time'
 import { normalizeUrlForStorage } from '../../../shared/utils/url'
 
 type BucketMap = Record<string, PageAnnotationBucket>
 
+type StoredAnnotationRecord = AnnotationRecord & {
+  highlight?: { enabled?: boolean; color?: AnnotationColor }
+  notes?: Array<{ content?: string }>
+  anchorKey?: string
+}
+
+type StoredPageAnnotationBucket = PageAnnotationBucket & {
+  annotations?: StoredAnnotationRecord[]
+}
+
+const normalizeStoredAnnotation = (annotation: StoredAnnotationRecord): AnnotationRecord => {
+  const noteFromNotes = annotation.notes?.map((item) => item.content?.trim() ?? '').filter(Boolean).at(-1)
+  const normalizedNote = annotation.note?.trim() || noteFromNotes || undefined
+
+  return {
+    id: annotation.id,
+    url: annotation.url,
+    pageTitle: annotation.pageTitle,
+    textQuote: annotation.textQuote,
+    prefixText: annotation.prefixText,
+    suffixText: annotation.suffixText,
+    startContainerPath: annotation.startContainerPath,
+    startOffset: annotation.startOffset,
+    endContainerPath: annotation.endContainerPath,
+    endOffset: annotation.endOffset,
+    color: annotation.color ?? annotation.highlight?.color ?? 'yellow',
+    note: normalizedNote,
+    createdAt: annotation.createdAt,
+    updatedAt: annotation.updatedAt
+  }
+}
+
+const normalizeBucketMap = (rawBucketMap: unknown): BucketMap => {
+  const source = (rawBucketMap as Record<string, StoredPageAnnotationBucket> | undefined) ?? {}
+  const nextBucketMap: BucketMap = {}
+
+  for (const [bucketKey, bucket] of Object.entries(source)) {
+    nextBucketMap[bucketKey] = {
+      url: bucket.url,
+      pageTitle: bucket.pageTitle,
+      annotations: (bucket.annotations ?? []).map((annotation) => normalizeStoredAnnotation(annotation)),
+      updatedAt: bucket.updatedAt,
+      schemaVersion: CURRENT_SCHEMA_VERSION
+    }
+  }
+
+  return nextBucketMap
+}
+
 const readBucketMap = async (): Promise<BucketMap> => {
   // 从浏览器本地存储读取整个页面注释分桶映射（key -> PageAnnotationBucket）
-  const stored = await browser.storage.local.get(STORAGE_KEYS.pageBuckets)
-  // 若为空则返回空对象，调用方按需处理
-  return (stored[STORAGE_KEYS.pageBuckets] as BucketMap | undefined) ?? {}
+  const stored = await browser.storage.local.get([STORAGE_KEYS.pageBuckets, STORAGE_KEYS.schemaVersion])
+  const storedSchemaVersion = stored[STORAGE_KEYS.schemaVersion] as number | undefined
+  const normalizedBucketMap = normalizeBucketMap(stored[STORAGE_KEYS.pageBuckets])
+
+  if (storedSchemaVersion !== CURRENT_SCHEMA_VERSION) {
+    await writeBucketMap(normalizedBucketMap)
+  }
+
+  return normalizedBucketMap
 }
 
 const writeBucketMap = async (bucketMap: BucketMap) => {
@@ -121,6 +176,7 @@ export const importAnnotationBundle = async (bundle: ExportBundle, mode: ImportM
   for (const bucket of bundle.buckets) {
     currentBucketMap[normalizeUrlForStorage(bucket.url)] = {
       ...bucket,
+      annotations: (bucket.annotations ?? []).map((annotation) => normalizeStoredAnnotation(annotation as StoredAnnotationRecord)),
       schemaVersion: CURRENT_SCHEMA_VERSION
     }
   }

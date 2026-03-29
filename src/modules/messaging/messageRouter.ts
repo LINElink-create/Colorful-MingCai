@@ -81,6 +81,7 @@ const handleCreateAnnotationFromSelection = async (message: RuntimeMessage) => {
   restoreAnnotation(annotation)
   // 将 annotation 持久化到仓库并返回所在的 bucket
   const bucket = await saveAnnotation(annotation)
+
   // 清除用户选区，恢复页面到无选中状态
   selection?.removeAllRanges()
   // 返回成功结果，包含更新后的 bucket
@@ -116,6 +117,35 @@ const handleRemoveAnnotationById = async (message: RuntimeMessage) => {
   return createOk({ bucket, removedCount: 1 })
 }
 
+const handleNavigateToAnnotation = async (message: RuntimeMessage) => {
+  if (message.type !== MESSAGE_TYPES.NAVIGATE_TO_ANNOTATION) {
+    return createError('Unsupported message')
+  }
+
+  const target = Array.from(document.querySelectorAll('mark[data-mingcai-id]')).find((element) => {
+    return element.getAttribute('data-mingcai-id') === message.payload.annotationId
+  })
+
+  if (!(target instanceof HTMLElement)) {
+    return createError('当前页面未找到这条高亮')
+  }
+
+  document.querySelectorAll('mark[data-mingcai-jump-target="true"]').forEach((element) => {
+    element.removeAttribute('data-mingcai-jump-target')
+  })
+
+  target.setAttribute('data-mingcai-jump-target', 'true')
+  target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
+
+  window.setTimeout(() => {
+    if (target.isConnected) {
+      target.removeAttribute('data-mingcai-jump-target')
+    }
+  }, 1800)
+
+  return createOk(undefined)
+}
+
 export const routeRuntimeMessage = async (message: RuntimeMessage, context: RouterContext = {}) => {
   try {
     // 当消息来自 content script 时，运行在页面上下文中，可直接操作 DOM
@@ -131,6 +161,10 @@ export const routeRuntimeMessage = async (message: RuntimeMessage, context: Rout
 
       if (message.type === MESSAGE_TYPES.REMOVE_ANNOTATIONS_FROM_SELECTION) {
         return await handleRemoveAnnotationsFromSelection(message)
+      }
+
+      if (message.type === MESSAGE_TYPES.NAVIGATE_TO_ANNOTATION) {
+        return await handleNavigateToAnnotation(message)
       }
 
       if (message.type === MESSAGE_TYPES.RESTORE_PAGE_ANNOTATIONS) {
