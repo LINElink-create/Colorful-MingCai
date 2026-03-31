@@ -2,7 +2,9 @@ export const STORAGE_KEYS = {
   pageBuckets: 'page-annotation-buckets',
   schemaVersion: 'schema-version',
   translationPreferences: 'translation-preferences',
-  backendConfig: 'backend-config'
+  translationPreferencesUpdatedAt: 'translation-preferences-updated-at',
+  backendConfig: 'backend-config',
+  cloudSyncState: 'cloud-sync-state'
 } as const
 
 export const CURRENT_SCHEMA_VERSION = 1

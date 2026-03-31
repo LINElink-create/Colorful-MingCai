@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { MESSAGE_TYPES } from '../../shared/constants/messageTypes'
 import { STORAGE_KEYS } from '../../shared/constants/storageKeys'
 import type { AnnotationRecord } from '../../shared/types/annotation'
-import type { RuntimeMessageResult } from '../../shared/types/message'
+import type { BackendConfigResult, CloudSyncResult, RuntimeMessageResult } from '../../shared/types/message'
 import type { ActivePageInfo } from '../../shared/types/page'
 import type { TranslationPreferences } from '../../shared/types/translation'
 import { getActivePageInfo, openExtensionPage, reloadTabById } from '../../modules/browser/tabs'
@@ -23,7 +23,7 @@ const emptyPageInfo = (): ActivePageInfo => ({
 // 这里统一管理“当前页摘要、语言偏好、单条删除确认、清空确认、历史与设置入口”等动作，
 // 让 App.vue 继续保持展示层角色，不直接耦合 tabs、storage 或 runtime message 细节。
 export const usePopupState = () => {
-  const settingsState = useSettingsState({ autoRefresh: false })
+  const settingsState = useSettingsState({ autoRefresh: false, autoSync: false })
   const isLoading = ref(false)
   const localErrorMessage = ref('')
   const pageInfo = ref<ActivePageInfo>(emptyPageInfo())
@@ -63,6 +63,26 @@ export const usePopupState = () => {
 
     try {
       pageInfo.value = await getActivePageInfo()
+
+      const backendConfigResult = await sendMessageToBackground<BackendConfigResult>({
+        type: MESSAGE_TYPES.GET_BACKEND_CONFIG,
+        payload: {}
+      })
+
+      if (!backendConfigResult.ok) {
+        throw new Error(backendConfigResult.error)
+      }
+
+      if (backendConfigResult.data.config.authState === 'authenticated') {
+        const syncResult = await sendMessageToBackground<CloudSyncResult>({
+          type: MESSAGE_TYPES.PULL_CLOUD_STATE,
+          payload: { automatic: true }
+        })
+
+        if (!syncResult.ok) {
+          throw new Error(syncResult.error)
+        }
+      }
 
       if (!pageInfo.value.url) {
         annotations.value = []

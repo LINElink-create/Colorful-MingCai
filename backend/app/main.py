@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api.routes.account import router as account_router
+from app.api.routes.annotations import router as annotations_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.health import router as health_router
 from app.api.routes.site import router as site_router
@@ -34,3 +35,4 @@ app.include_router(health_router, prefix="/v1")
 app.include_router(translation_router, prefix="/v1")
 app.include_router(account_router, prefix="/v1")
 app.include_router(auth_router, prefix="/v1")
+app.include_router(annotations_router, prefix="/v1")

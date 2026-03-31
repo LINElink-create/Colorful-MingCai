@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "wxt",
+    "dev:restart": "powershell -ExecutionPolicy Bypass -File ./scripts/restart-dev.ps1",
     "build": "wxt build",
     "zip": "wxt zip",
     "typecheck": "tsc --noEmit",

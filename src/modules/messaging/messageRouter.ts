@@ -7,6 +7,16 @@ import { removeRenderedAnnotation } from '../annotations/rendering/highlightRend
 import { normalizeRange } from '../annotations/rendering/rangeNormalizer'
 import { clearPageAnnotations, exportAnnotationBundle, getPageBucket, removeAnnotationsByIds, saveAnnotation } from '../annotations/repository/annotationRepository'
 import { downloadTextFile } from '../browser/downloads'
+import {
+  confirmCloudUpload,
+  loginCloudAccount,
+  loadCloudAccount,
+  logoutCloudAccount,
+  previewCloudUpload,
+  pullCloudState,
+  registerCloudAccount,
+  syncCloudState,
+} from '../cloud/cloudAccountService'
 import { EXPORT_FORMATS } from '../../shared/constants/exportFormats'
 import { MESSAGE_TYPES } from '../../shared/constants/messageTypes'
 import { getBackendConfig, saveBackendConfig } from '../translation/backendConfigRepository'
@@ -237,6 +247,38 @@ export const routeRuntimeMessage = async (message: RuntimeMessage, context: Rout
       case MESSAGE_TYPES.GET_BACKEND_CONFIG: {
         const config = await getBackendConfig()
         return createOk({ config })
+      }
+      case MESSAGE_TYPES.REGISTER_BACKEND_ACCOUNT: {
+        const result = await registerCloudAccount(message.payload)
+        return createOk({ account: result.account, config: result.config })
+      }
+      case MESSAGE_TYPES.LOGIN_BACKEND_ACCOUNT: {
+        const result = await loginCloudAccount(message.payload)
+        return createOk({ account: result.account, config: result.config })
+      }
+      case MESSAGE_TYPES.LOGOUT_BACKEND_ACCOUNT: {
+        await logoutCloudAccount()
+        return createOk(undefined)
+      }
+      case MESSAGE_TYPES.GET_BACKEND_ACCOUNT: {
+        const account = await loadCloudAccount()
+        return createOk({ account })
+      }
+      case MESSAGE_TYPES.PULL_CLOUD_STATE: {
+        const result = await pullCloudState()
+        return createOk(result)
+      }
+      case MESSAGE_TYPES.PREVIEW_CLOUD_UPLOAD: {
+        const result = await previewCloudUpload()
+        return createOk(result)
+      }
+      case MESSAGE_TYPES.CONFIRM_CLOUD_UPLOAD: {
+        const result = await confirmCloudUpload()
+        return createOk(result)
+      }
+      case MESSAGE_TYPES.SYNC_WITH_CLOUD: {
+        const result = await syncCloudState()
+        return createOk(result)
       }
       case MESSAGE_TYPES.SAVE_BACKEND_CONFIG: {
         const config = await saveBackendConfig(message.payload)
