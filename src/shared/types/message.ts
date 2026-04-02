@@ -4,6 +4,8 @@ import type { BackendAccount } from './auth'
 import type { CloudSyncState, CloudUploadPreview } from './sync'
 import type {
   BackendConfig,
+  TranslationProvider,
+  TranslationProviderConfigInput,
   TranslationPreferences,
   TranslationProviderStatus,
   TranslationResult
@@ -140,6 +142,16 @@ export type RuntimeMessage =
       // 获取远端翻译 provider 状态
       type: 'GET_TRANSLATION_PROVIDER_STATUS'
       payload: Record<string, never>
+    }
+  | {
+      // 保存个人翻译 provider 配置
+      type: 'SAVE_TRANSLATION_PROVIDER_CONFIG'
+      payload: TranslationProviderConfigInput
+    }
+  | {
+      // 删除个人翻译 provider 配置
+      type: 'DELETE_TRANSLATION_PROVIDER_CONFIG'
+      payload: { provider: TranslationProvider }
     }
 
 // 运行时消息的统一返回结构：要么 ok 并携带 data，要么 ok=false 并携带错误信息

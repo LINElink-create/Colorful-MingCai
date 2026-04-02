@@ -13,14 +13,10 @@ export type CloudUploadPreview = {
   remoteAnnotationCount: number
   mergedBucketCount: number
   mergedAnnotationCount: number
-  includesPreferences: boolean
-  localPreferenceUpdatedAt: string
-  remotePreferenceUpdatedAt: string
 }
 
 export type CloudSyncState = {
   lastSyncedAt: string
   bucketCount: number
   annotationCount: number
-  preferenceUpdatedAt: string
 }

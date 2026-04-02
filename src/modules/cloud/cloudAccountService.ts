@@ -2,24 +2,18 @@ import browser from 'webextension-polyfill'
 import { exportAnnotationBundle, importAnnotationBundle } from '../annotations/repository/annotationRepository'
 import {
   getCloudAnnotationBundle,
-  getCloudTranslationPreferences,
   getCurrentBackendAccount,
   loginBackendAccount,
   logoutBackendAccount,
   registerBackendAccount,
   replaceCloudAnnotationBundle,
-  replaceCloudTranslationPreferences,
   withBackendRefresh
 } from '../translation/backendClient'
 import { getBackendConfig, saveBackendConfig } from '../translation/backendConfigRepository'
-import {
-  getTranslationPreferencesSnapshot,
-  saveTranslationPreferencesSnapshot
-} from '../translation/preferencesRepository'
 import { STORAGE_KEYS } from '../../shared/constants/storageKeys'
 import type { ExportBundle, PageAnnotationBucket } from '../../shared/types/annotation'
 import type { BackendAccount } from '../../shared/types/auth'
-import type { CloudSyncState, CloudUploadPreview, TranslationPreferencesSnapshot } from '../../shared/types/sync'
+import type { CloudSyncState, CloudUploadPreview } from '../../shared/types/sync'
 import { DEFAULT_BACKEND_CONFIG, type BackendConfig } from '../../shared/types/translation'
 import { getPageKey } from '../../shared/utils/pageKey'
 import { nowIsoString } from '../../shared/utils/time'
@@ -51,13 +45,6 @@ const mergeBuckets = (localBundle: ExportBundle, remoteBundle: ExportBundle): Ex
   }
 }
 
-const mergePreferenceSnapshots = (
-  localSnapshot: TranslationPreferencesSnapshot,
-  remoteSnapshot: TranslationPreferencesSnapshot
-) => {
-  return localSnapshot.updatedAt.localeCompare(remoteSnapshot.updatedAt) >= 0 ? localSnapshot : remoteSnapshot
-}
-
 const countAnnotations = (bundle: ExportBundle) => {
   return bundle.buckets.reduce((total, bucket) => total + bucket.annotations.length, 0)
 }
@@ -69,34 +56,24 @@ const persistCloudSyncState = async (syncState: CloudSyncState) => {
 }
 
 const fetchSyncMaterials = async (activeConfig: BackendConfig) => {
-  const [localBundle, localPreferenceSnapshot, remoteBundle, remotePreferenceSnapshot] = await Promise.all([
+  const [localBundle, remoteBundle] = await Promise.all([
     exportAnnotationBundle(),
-    getTranslationPreferencesSnapshot(),
-    getCloudAnnotationBundle(activeConfig),
-    getCloudTranslationPreferences(activeConfig)
+    getCloudAnnotationBundle(activeConfig)
   ])
 
   const mergedBundle = mergeBuckets(localBundle, remoteBundle)
-  const mergedPreferenceSnapshot = mergePreferenceSnapshots(localPreferenceSnapshot, remotePreferenceSnapshot)
 
   return {
     localBundle,
-    localPreferenceSnapshot,
     remoteBundle,
-    remotePreferenceSnapshot,
-    mergedBundle,
-    mergedPreferenceSnapshot
+    mergedBundle
   }
 }
 
-const buildCloudSyncState = (
-  bundle: ExportBundle,
-  snapshot: TranslationPreferencesSnapshot,
-): CloudSyncState => ({
+const buildCloudSyncState = (bundle: ExportBundle): CloudSyncState => ({
   lastSyncedAt: nowIsoString(),
   bucketCount: bundle.buckets.length,
-  annotationCount: countAnnotations(bundle),
-  preferenceUpdatedAt: snapshot.updatedAt
+  annotationCount: countAnnotations(bundle)
 })
 
 const buildAuthenticatedConfig = (config: BackendConfig, accessToken: string, refreshToken: string): BackendConfig => ({
@@ -166,9 +143,8 @@ export const pullCloudState = async (): Promise<CloudSyncState> => {
     const materials = await fetchSyncMaterials(activeConfig)
 
     await importAnnotationBundle(materials.mergedBundle, 'replace')
-    await saveTranslationPreferencesSnapshot(materials.mergedPreferenceSnapshot)
 
-    const syncState = buildCloudSyncState(materials.mergedBundle, materials.mergedPreferenceSnapshot)
+    const syncState = buildCloudSyncState(materials.mergedBundle)
     await persistCloudSyncState(syncState)
     return syncState
   })
@@ -191,10 +167,7 @@ export const previewCloudUpload = async (): Promise<CloudUploadPreview> => {
       remoteBucketCount: materials.remoteBundle.buckets.length,
       remoteAnnotationCount: countAnnotations(materials.remoteBundle),
       mergedBucketCount: materials.mergedBundle.buckets.length,
-      mergedAnnotationCount: countAnnotations(materials.mergedBundle),
-      includesPreferences: true,
-      localPreferenceUpdatedAt: materials.localPreferenceSnapshot.updatedAt,
-      remotePreferenceUpdatedAt: materials.remotePreferenceSnapshot.updatedAt,
+      mergedAnnotationCount: countAnnotations(materials.mergedBundle)
     }
   })
 
@@ -215,14 +188,10 @@ export const syncCloudState = async (): Promise<CloudSyncState> => {
     const materials = await fetchSyncMaterials(activeConfig)
 
     await importAnnotationBundle(materials.mergedBundle, 'replace')
-    await saveTranslationPreferencesSnapshot(materials.mergedPreferenceSnapshot)
 
-    const [savedBundle, savedPreferenceSnapshot] = await Promise.all([
-      replaceCloudAnnotationBundle(activeConfig, materials.mergedBundle),
-      replaceCloudTranslationPreferences(activeConfig, materials.mergedPreferenceSnapshot)
-    ])
+    const savedBundle = await replaceCloudAnnotationBundle(activeConfig, materials.mergedBundle)
 
-    const syncState = buildCloudSyncState(savedBundle, savedPreferenceSnapshot)
+    const syncState = buildCloudSyncState(savedBundle)
     await persistCloudSyncState(syncState)
 
     return syncState

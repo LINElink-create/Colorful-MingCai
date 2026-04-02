@@ -16,6 +16,8 @@ import {
   DEFAULT_BACKEND_CONFIG,
   DEFAULT_TRANSLATION_PREFERENCES,
   type BackendConfig,
+  type TranslationProvider,
+  type TranslationProviderConfigInput,
   type TranslationPreferences,
   type TranslationProviderStatus
 } from '../../shared/types/translation'
@@ -31,8 +33,11 @@ export const useSettingsState = (options?: { autoRefresh?: boolean; autoSync?: b
   const currentAccount = ref<BackendAccount | null>(null)
   const cloudSyncState = ref<CloudSyncState | null>(null)
   const isSyncing = ref(false)
+  const isAuthenticated = computed(() => backendConfig.value.authState === 'authenticated' && currentAccount.value !== null)
 
-  const primaryProviderStatus = computed(() => providerStatuses.value[0] ?? null)
+  const primaryProviderStatus = computed(() => {
+    return providerStatuses.value.find((provider) => provider.provider === translationPreferences.value.defaultProvider) ?? null
+  })
 
   const refreshProviderStatuses = async () => {
     const result = await sendMessageToBackground<TranslationProviderStatusResult>({
@@ -180,6 +185,50 @@ export const useSettingsState = (options?: { autoRefresh?: boolean; autoSync?: b
     errorMessage.value = ''
   }
 
+  const saveProviderConfig = async (payload: TranslationProviderConfigInput) => {
+    isSaving.value = true
+    errorMessage.value = ''
+
+    try {
+      const result = await sendMessageToBackground<TranslationProviderStatusResult>({
+        type: MESSAGE_TYPES.SAVE_TRANSLATION_PROVIDER_CONFIG,
+        payload
+      })
+
+      if (!result.ok) {
+        throw new Error(result.error)
+      }
+
+      providerStatuses.value = result.data.providers
+    } catch (error) {
+      errorMessage.value = error instanceof Error ? error.message : '保存服务商配置失败'
+    } finally {
+      isSaving.value = false
+    }
+  }
+
+  const deleteProviderConfig = async (provider: TranslationProvider) => {
+    isSaving.value = true
+    errorMessage.value = ''
+
+    try {
+      const result = await sendMessageToBackground<TranslationProviderStatusResult>({
+        type: MESSAGE_TYPES.DELETE_TRANSLATION_PROVIDER_CONFIG,
+        payload: { provider }
+      })
+
+      if (!result.ok) {
+        throw new Error(result.error)
+      }
+
+      providerStatuses.value = result.data.providers
+    } catch (error) {
+      errorMessage.value = error instanceof Error ? error.message : '删除服务商配置失败'
+    } finally {
+      isSaving.value = false
+    }
+  }
+
   const registerAccount = async (payload: { email: string; password: string; displayName?: string }) => {
     isSaving.value = true
     errorMessage.value = ''
@@ -267,7 +316,7 @@ export const useSettingsState = (options?: { autoRefresh?: boolean; autoSync?: b
 
       const preview: CloudUploadPreview = previewResult.data
       const confirmed = globalThis.confirm(
-        `本次将上传 ${preview.mergedBucketCount} 个站点、${preview.mergedAnnotationCount} 条高亮，并同步翻译偏好。确认继续吗？`
+          `本次将上传 ${preview.mergedBucketCount} 个站点、${preview.mergedAnnotationCount} 条高亮和笔记。API 接口及相关配置不会上传。确认继续吗？`
       )
 
       if (!confirmed) {
@@ -350,10 +399,13 @@ export const useSettingsState = (options?: { autoRefresh?: boolean; autoSync?: b
     currentAccount,
     cloudSyncState,
     isSyncing,
+    isAuthenticated,
     primaryProviderStatus,
     refresh,
     saveTranslationPreferences,
     saveTranslationConfig,
+    saveProviderConfig,
+    deleteProviderConfig,
     registerAccount,
     loginAccount,
     logoutAccount,

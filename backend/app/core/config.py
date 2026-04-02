@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     platform_translation_enabled: bool = Field(default=True, alias="PLATFORM_TRANSLATION_ENABLED")
     platform_youdao_app_key: str = Field(default="", alias="PLATFORM_YOUDAO_APP_KEY")
     platform_youdao_app_secret: str = Field(default="", alias="PLATFORM_YOUDAO_APP_SECRET")
+    provider_credential_encryption_key: str = Field(default="", alias="PROVIDER_CREDENTIAL_ENCRYPTION_KEY")
     platform_requests_per_minute: int = Field(default=30, alias="PLATFORM_REQUESTS_PER_MINUTE")
     platform_daily_limit: int = Field(default=5000, alias="PLATFORM_DAILY_LIMIT")
     cors_origins_raw: str = Field(default="", alias="CORS_ORIGINS")

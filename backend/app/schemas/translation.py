@@ -6,7 +6,7 @@ from pydantic import Field
 
 from app.schemas.common import CamelModel
 
-TranslationProvider = Literal["youdao"]
+TranslationProvider = Literal["youdao", "openai_compatible"]
 TranslationLanguageCode = Literal["auto", "zh-CHS", "en", "ja", "ko", "fr", "de", "es", "ru"]
 
 
@@ -61,3 +61,18 @@ class ProviderStatusOut(CamelModel):
     config_mode: Optional[Literal["managed", "byo_key"]] = None
     status: Literal["available", "unavailable", "not_configured"]
     last_error_code: Optional[str] = None
+    config_summary: Optional["ProviderConfigSummaryOut"] = None
+
+
+class ProviderConfigSummaryOut(CamelModel):
+    credential_hint: Optional[str] = None
+    endpoint_url: Optional[str] = None
+    model: Optional[str] = None
+
+
+class ProviderConfigUpdate(CamelModel):
+    youdao_app_key: Optional[str] = Field(default=None, max_length=255)
+    youdao_app_secret: Optional[str] = Field(default=None, max_length=255)
+    openai_base_url: Optional[str] = Field(default=None, max_length=512)
+    openai_api_key: Optional[str] = Field(default=None, max_length=512)
+    openai_model: Optional[str] = Field(default=None, max_length=255)

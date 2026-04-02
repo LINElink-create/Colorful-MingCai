@@ -40,7 +40,7 @@ const annotationCountText = computed(() => {
 })
 
 const providerTone = computed(() => {
-  const s = providerStatuses.value[0]
+  const s = providerStatuses.value.find((provider) => provider.provider === translationPreferences.value.defaultProvider)
   if (!s) return 'status-idle'
   if (s.status === 'available') return 'status-ready'
   if (s.status === 'not_configured') return 'status-warn'
@@ -48,7 +48,7 @@ const providerTone = computed(() => {
 })
 
 const providerText = computed(() => {
-  const s = providerStatuses.value[0]
+  const s = providerStatuses.value.find((provider) => provider.provider === translationPreferences.value.defaultProvider)
   if (!s) return '翻译未检测'
   if (s.status === 'available') return s.userConfigured ? '个人翻译可用' : '后端翻译可用'
   if (s.status === 'not_configured') return '翻译未配置'

@@ -20,7 +20,12 @@ import {
 import { EXPORT_FORMATS } from '../../shared/constants/exportFormats'
 import { MESSAGE_TYPES } from '../../shared/constants/messageTypes'
 import { getBackendConfig, saveBackendConfig } from '../translation/backendConfigRepository'
-import { translateWithBackend, getTranslationProviderStatuses } from '../translation/backendClient'
+import {
+  deleteTranslationProviderConfig,
+  getTranslationProviderStatuses,
+  saveTranslationProviderConfig,
+  translateWithBackend,
+} from '../translation/backendClient'
 import { getTranslationPreferences, saveTranslationPreferences } from '../translation/preferencesRepository'
 import type { RuntimeMessage, RuntimeMessageResult } from '../../shared/types/message'
 import { getPageKey } from '../../shared/utils/pageKey'
@@ -287,6 +292,16 @@ export const routeRuntimeMessage = async (message: RuntimeMessage, context: Rout
       case MESSAGE_TYPES.GET_TRANSLATION_PROVIDER_STATUS: {
         const config = await getBackendConfig()
         const providers = await getTranslationProviderStatuses(config)
+        return createOk({ providers })
+      }
+      case MESSAGE_TYPES.SAVE_TRANSLATION_PROVIDER_CONFIG: {
+        const config = await getBackendConfig()
+        const providers = await saveTranslationProviderConfig(config, message.payload)
+        return createOk({ providers })
+      }
+      case MESSAGE_TYPES.DELETE_TRANSLATION_PROVIDER_CONFIG: {
+        const config = await getBackendConfig()
+        const providers = await deleteTranslationProviderConfig(config, message.payload.provider)
         return createOk({ providers })
       }
       default: {

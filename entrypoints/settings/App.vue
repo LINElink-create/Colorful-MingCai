@@ -15,13 +15,15 @@ const {
   isSaving,
   errorMessage,
   translationPreferences,
-  backendConfig,
   providerStatuses,
   currentAccount,
   cloudSyncState,
   isSyncing,
+  isAuthenticated,
   refresh,
-  saveTranslationConfig,
+  saveTranslationPreferences,
+  saveProviderConfig,
+  deleteProviderConfig,
   loginAccount,
   logoutAccount,
   syncCloud
@@ -82,7 +84,7 @@ const openRegisterPage = () => {
     <header class="settings-header">
       <div>
         <h1>设置</h1>
-        <p class="header-subtitle">管理翻译配置、数据以及扩展偏好</p>
+        <p class="header-subtitle">管理翻译、同步与数据</p>
       </div>
       <button class="btn-ghost" :disabled="isLoading || isSaving" @click="refresh">
         {{ isLoading ? '同步中…' : '刷新' }}
@@ -97,18 +99,20 @@ const openRegisterPage = () => {
         <h2 class="section-title">翻译设置</h2>
         <TranslationSettingsCard
           :preferences="translationPreferences"
-          :backend-config="backendConfig"
           :provider-statuses="providerStatuses"
+          :is-authenticated="isAuthenticated"
           :disabled="isLoading"
           :is-saving="isSaving"
-          @save="saveTranslationConfig"
+          @save-preferences="saveTranslationPreferences"
+          @save-provider-config="saveProviderConfig"
+          @delete-provider-config="deleteProviderConfig"
         />
       </section>
 
       <div class="section-sidebar">
         <section class="section-card">
           <h2 class="section-title">账号与云同步</h2>
-          <p class="section-desc">登录后即可把高亮、笔记和翻译偏好同步到云端。</p>
+          <p class="section-desc">登录后可同步高亮和笔记，不上传 API 配置。</p>
 
           <div v-if="currentAccount" class="account-summary">
             <div class="about-row">
@@ -129,7 +133,7 @@ const openRegisterPage = () => {
               <strong>{{ cloudSyncState.bucketCount }} 个站点 / {{ cloudSyncState.annotationCount }} 条高亮</strong>
             </div>
             <p class="section-desc">
-              自动流程仅会拉取云端数据；上传到云端前会先请求你的确认。
+              自动只拉取云端数据；上传前会先确认。
             </p>
             <div class="account-actions">
               <button class="btn-primary" :disabled="isLoading || isSyncing" @click="syncCloud">

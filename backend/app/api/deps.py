@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Generator
 from typing import Optional
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -43,3 +43,22 @@ def get_current_auth_context(
 
 def get_current_user(context: AuthContext = Depends(get_current_auth_context)) -> User:
     return context.user
+
+
+def get_optional_current_auth_context(
+    access_token: Optional[str] = Depends(get_bearer_token),
+    auth_service: AuthenticationService = Depends(get_auth_service),
+) -> Optional[AuthContext]:
+    if not access_token:
+        return None
+
+    try:
+        return auth_service.get_auth_context_by_access_token(access_token)
+    except HTTPException:
+        return None
+
+
+def get_optional_current_user(
+    context: Optional[AuthContext] = Depends(get_optional_current_auth_context),
+) -> Optional[User]:
+    return context.user if context else None

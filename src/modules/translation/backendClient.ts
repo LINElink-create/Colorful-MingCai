@@ -3,10 +3,13 @@ import type { BackendAccount, BackendAuthSession } from '../../shared/types/auth
 import type { TranslationPreferencesSnapshot } from '../../shared/types/sync'
 import {
   type BackendConfig,
+  type TranslationProvider,
+  type TranslationProviderConfigInput,
   type TranslationPreferences,
   type TranslationProviderStatus,
   type TranslationResult
 } from '../../shared/types/translation'
+import { saveBackendConfig } from './backendConfigRepository'
 
 const parseErrorMessage = async (response: Response, fallbackMessage: string) => {
   try {
@@ -91,52 +94,112 @@ const pickValue = <TValue>(data: Record<string, unknown>, camelKey: string, snak
   return (data[camelKey] ?? data[snakeKey]) as TValue
 }
 
+const parseProviderStatus = (provider: Record<string, unknown>): TranslationProviderStatus => {
+  const summary = pickValue<Record<string, unknown> | null | undefined>(provider, 'configSummary', 'config_summary')
+
+  return {
+    provider: pickValue<TranslationProvider>(provider, 'provider', 'provider'),
+    platformAvailable: pickValue<boolean>(provider, 'platformAvailable', 'platform_available'),
+    userConfigured: pickValue<boolean>(provider, 'userConfigured', 'user_configured'),
+    configMode: pickValue<'managed' | 'byo_key' | null>(provider, 'configMode', 'config_mode'),
+    status: pickValue<'available' | 'unavailable' | 'not_configured'>(provider, 'status', 'status'),
+    lastErrorCode: pickValue<string | null | undefined>(provider, 'lastErrorCode', 'last_error_code') ?? undefined,
+    configSummary: summary
+      ? {
+          credentialHint: pickValue<string | null | undefined>(summary, 'credentialHint', 'credential_hint') ?? undefined,
+          endpointUrl: pickValue<string | null | undefined>(summary, 'endpointUrl', 'endpoint_url') ?? undefined,
+          model: pickValue<string | null | undefined>(summary, 'model', 'model') ?? undefined,
+        }
+      : null,
+  }
+}
+
 export const translateWithBackend = async (
   payload: BackendTranslatePayload,
   config: BackendConfig
 ): Promise<TranslationResult> => {
-  const data = await requestJson<Record<string, unknown>>('/v1/translation/translate', config, {
-    method: 'POST',
-    fallbackMessage: '后端翻译请求失败',
-    body: {
-      text: payload.text,
-      source_language: payload.preferences.sourceLanguage,
-      target_language: payload.preferences.targetLanguage,
-      provider_hint: payload.preferences.defaultProvider,
-      client_context: {
-        extension_version: payload.extensionVersion,
-        page_url: payload.pageUrl,
-        page_title: payload.pageTitle
+  const result = await withBackendRefresh(config, saveBackendConfig, async (activeConfig) => {
+    return requestJson<Record<string, unknown>>('/v1/translation/translate', activeConfig, {
+      method: 'POST',
+      fallbackMessage: '后端翻译请求失败',
+      body: {
+        text: payload.text,
+        source_language: payload.preferences.sourceLanguage,
+        target_language: payload.preferences.targetLanguage,
+        provider_hint: payload.preferences.defaultProvider,
+        client_context: {
+          extension_version: payload.extensionVersion,
+          page_url: payload.pageUrl,
+          page_title: payload.pageTitle
+        }
       }
-    }
+    })
   })
+
+  const data = result.data
 
   return {
     query: payload.text.trim(),
     translation: pickValue<string>(data, 'translatedText', 'translated_text'),
     detectedSourceLanguage: pickValue<string>(data, 'detectedSourceLanguage', 'detected_source_language'),
     targetLanguage: pickValue<string>(data, 'targetLanguage', 'target_language'),
-    provider: pickValue<'youdao'>(data, 'provider', 'provider')
+    provider: pickValue<TranslationProvider>(data, 'provider', 'provider')
   }
 }
 
 export const getTranslationProviderStatuses = async (
   config: BackendConfig
 ): Promise<TranslationProviderStatus[]> => {
-  const data = await requestJson<{
-    providers: Array<Record<string, unknown>>
-  }>('/v1/account/providers', config, {
-    fallbackMessage: '获取翻译服务状态失败'
+  const result = await withBackendRefresh(config, saveBackendConfig, async (activeConfig) => {
+    return requestJson<{
+      providers: Array<Record<string, unknown>>
+    }>('/v1/account/providers', activeConfig, {
+      fallbackMessage: '获取翻译服务状态失败'
+    })
   })
 
-  return data.providers.map((provider) => ({
-    provider: pickValue<'youdao'>(provider, 'provider', 'provider'),
-    platformAvailable: pickValue<boolean>(provider, 'platformAvailable', 'platform_available'),
-    userConfigured: pickValue<boolean>(provider, 'userConfigured', 'user_configured'),
-    configMode: pickValue<'managed' | 'byo_key' | null>(provider, 'configMode', 'config_mode'),
-    status: pickValue<'available' | 'unavailable' | 'not_configured'>(provider, 'status', 'status'),
-    lastErrorCode: pickValue<string | null | undefined>(provider, 'lastErrorCode', 'last_error_code') ?? undefined
-  }))
+  return result.data.providers.map(parseProviderStatus)
+}
+
+export const saveTranslationProviderConfig = async (
+  config: BackendConfig,
+  payload: TranslationProviderConfigInput
+): Promise<TranslationProviderStatus[]> => {
+  const path = `/v1/translation/provider-configs/${payload.provider}`
+  const body = payload.provider === 'youdao'
+    ? {
+        youdaoAppKey: payload.appKey,
+        youdaoAppSecret: payload.appSecret,
+      }
+    : {
+        openaiBaseUrl: payload.baseUrl,
+        openaiApiKey: payload.apiKey,
+        openaiModel: payload.model,
+      }
+
+  const result = await withBackendRefresh(config, saveBackendConfig, async (activeConfig) => {
+    return requestJson<Array<Record<string, unknown>>>(path, activeConfig, {
+      method: 'PUT',
+      fallbackMessage: '保存翻译服务商配置失败',
+      body,
+    })
+  })
+
+  return result.data.map(parseProviderStatus)
+}
+
+export const deleteTranslationProviderConfig = async (
+  config: BackendConfig,
+  provider: TranslationProvider
+): Promise<TranslationProviderStatus[]> => {
+  const result = await withBackendRefresh(config, saveBackendConfig, async (activeConfig) => {
+    return requestJson<Array<Record<string, unknown>>>(`/v1/translation/provider-configs/${provider}`, activeConfig, {
+      method: 'DELETE',
+      fallbackMessage: '删除翻译服务商配置失败',
+    })
+  })
+
+  return result.data.map(parseProviderStatus)
 }
 
 export const registerBackendAccount = async (

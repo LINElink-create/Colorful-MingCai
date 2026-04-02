@@ -329,6 +329,7 @@ a {
 
 .footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
@@ -357,6 +358,21 @@ a {
 
 .footer-meta a {
   color: var(--mc-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.footer-beian {
+  width: 100%;
+  padding-top: 12px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  text-align: center;
+}
+
+.footer-beian a {
+  color: var(--mc-muted-strong);
+  font-size: 12px;
+  line-height: 1.7;
   text-decoration: underline;
   text-underline-offset: 2px;
 }

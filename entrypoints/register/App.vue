@@ -7,7 +7,6 @@ const {
   isLoading,
   isSaving,
   errorMessage,
-  backendConfig,
   currentAccount,
   registerAccount
 } = useSettingsState({ autoSync: false })
@@ -52,10 +51,9 @@ const pageTitle = computed(() => {
       <p class="lead">
         {{ currentAccount
           ? '当前浏览器已经登录，可直接返回设置页继续同步。'
-          : '创建账号后，你的高亮、笔记和翻译偏好就能同步到云端。' }}
+          : '创建账号后可同步高亮和笔记，不上传 API 配置。' }}
       </p>
 
-      <p class="backend-meta">当前后端：{{ backendConfig.baseUrl }}</p>
       <p v-if="errorMessage" class="error-message mc-error-message">{{ errorMessage }}</p>
       <p v-if="successMessage" class="success-message">{{ successMessage }}</p>
 
@@ -129,7 +127,6 @@ const pageTitle = computed(() => {
 
 .register-card h1,
 .lead,
-.backend-meta,
 .success-message {
   margin: 0;
 }
@@ -146,15 +143,6 @@ const pageTitle = computed(() => {
   color: #475569;
   font-size: 14px;
   line-height: 1.7;
-}
-
-.backend-meta {
-  margin-top: 14px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: #eff6ff;
-  color: #1d4ed8;
-  font-size: 12px;
 }
 
 .success-message {
