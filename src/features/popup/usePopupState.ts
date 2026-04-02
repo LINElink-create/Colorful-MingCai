@@ -23,12 +23,14 @@ export const usePopupState = () => {
   const settingsState = useSettingsState({ autoRefresh: false, autoSync: false })
   const isLoading = ref(false)
   const localErrorMessage = ref('')
+  const localErrorMessage = ref('')
   const pageInfo = ref<ActivePageInfo>(emptyPageInfo())
   const annotations = ref<AnnotationRecord[]>([])
   const isClearConfirmOpen = ref(false)
   const pendingDeleteAnnotationId = ref('')
   const pendingDeleteAnnotation = ref<AnnotationRecord | null>(null)
   const isDeleteConfirmOpen = computed(() => pendingDeleteAnnotationId.value !== '')
+  const errorMessage = computed(() => localErrorMessage.value || settingsState.errorMessage.value)
   const errorMessage = computed(() => localErrorMessage.value || settingsState.errorMessage.value)
 
   const syncPendingDeleteAnnotation = () => {
@@ -83,11 +85,14 @@ export const usePopupState = () => {
       if (!pageInfo.value.url) {
         annotations.value = []
         await settingsState.refresh()
+        await settingsState.refresh()
         return
       }
 
       await Promise.all([syncAnnotationsForPage(pageInfo.value.url), settingsState.refresh()])
+      await Promise.all([syncAnnotationsForPage(pageInfo.value.url), settingsState.refresh()])
     } catch (error) {
+      localErrorMessage.value = error instanceof Error ? error.message : '加载当前页数据失败'
       localErrorMessage.value = error instanceof Error ? error.message : '加载当前页数据失败'
     } finally {
       isLoading.value = false
@@ -123,6 +128,7 @@ export const usePopupState = () => {
 
     isLoading.value = true
     localErrorMessage.value = ''
+    localErrorMessage.value = ''
 
     try {
       const result = await sendMessageToBackground({
@@ -142,6 +148,7 @@ export const usePopupState = () => {
       }
     } catch (error) {
       localErrorMessage.value = error instanceof Error ? error.message : '清空失败'
+      localErrorMessage.value = error instanceof Error ? error.message : '清空失败'
     } finally {
       isLoading.value = false
     }
@@ -154,6 +161,7 @@ export const usePopupState = () => {
     }
 
     isLoading.value = true
+    localErrorMessage.value = ''
     localErrorMessage.value = ''
 
     try {
@@ -169,6 +177,7 @@ export const usePopupState = () => {
       annotations.value = result.data?.bucket?.annotations ?? []
       cancelRemoveAnnotation()
     } catch (error) {
+      localErrorMessage.value = error instanceof Error ? error.message : '删除高亮失败'
       localErrorMessage.value = error instanceof Error ? error.message : '删除高亮失败'
     } finally {
       isLoading.value = false
@@ -215,13 +224,25 @@ export const usePopupState = () => {
       await openExtensionPage('/history.html')
     } catch (error) {
       localErrorMessage.value = error instanceof Error ? error.message : '打开历史总览失败'
+      localErrorMessage.value = error instanceof Error ? error.message : '打开历史总览失败'
     }
   }
 
   const openSettingsPage = async () => {
     try {
       await openExtensionPage('/settings.html')
+  const openSettingsPage = async () => {
+    try {
+      await openExtensionPage('/settings.html')
     } catch (error) {
+      localErrorMessage.value = error instanceof Error ? error.message : '打开设置页面失败'
+    }
+  }
+
+  const saveLanguagePreferences = async (preferences: TranslationPreferences) => {
+    settingsState.clearError()
+    localErrorMessage.value = ''
+    await settingsState.saveTranslationPreferences(preferences)
       localErrorMessage.value = error instanceof Error ? error.message : '打开设置页面失败'
     }
   }
@@ -266,8 +287,11 @@ export const usePopupState = () => {
     annotations,
     translationPreferences: settingsState.translationPreferences,
     providerStatuses: settingsState.providerStatuses,
+    translationPreferences: settingsState.translationPreferences,
+    providerStatuses: settingsState.providerStatuses,
     isClearConfirmOpen,
     isDeleteConfirmOpen,
+    isSavingTranslationConfig: settingsState.isSaving,
     isSavingTranslationConfig: settingsState.isSaving,
     pendingDeleteAnnotation,
     refresh,
@@ -280,6 +304,7 @@ export const usePopupState = () => {
     requestRemoveAnnotation,
     cancelRemoveAnnotation,
     confirmRemoveAnnotation,
+    saveLanguagePreferences
     saveLanguagePreferences
   }
 }

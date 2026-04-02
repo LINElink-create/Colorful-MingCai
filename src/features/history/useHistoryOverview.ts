@@ -93,6 +93,10 @@ export const useHistoryOverview = () => {
     await openExtensionPage('/settings.html')
   }
 
+  const openSettingsPage = async () => {
+    await openExtensionPage('/settings.html')
+  }
+
   const syncRemoveFromOpenTabs = async (url: string, annotationId: string) => {
     const tabIds = await findTabIdsByPageUrl(url)
 
@@ -155,7 +159,10 @@ export const useHistoryOverview = () => {
     refresh,
     exportAnnotations,
     importAnnotations,
+    exportAnnotations,
+    importAnnotations,
     openOriginalPage,
+    openSettingsPage,
     openSettingsPage,
     removeAnnotation,
     getColorMeta
