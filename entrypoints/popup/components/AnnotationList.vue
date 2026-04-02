@@ -22,13 +22,6 @@ const getColorMeta = (color: AnnotationRecord['color']) => colorMetaMap[color]
 const getColorMeta = (color: AnnotationRecord['color']) => colorMetaMap[color]
 </script>
 
-<!--
-  说明：
-  - 只负责展示传入的注释列表与加载/空状态占位
-  - 不执行任何数据加载或变更操作，交由父组件控制
-  - 当前版本点击卡片发出“跳转定位”事件，点击 × 发出“请求删除”事件
--->
-
 <template>
   <section class="list-card">
     <div class="list-header">

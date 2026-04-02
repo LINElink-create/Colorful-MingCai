@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed } from 'vue'
 import { computed } from 'vue'
 import AnnotationList from './components/AnnotationList.vue'
@@ -38,30 +38,52 @@ const noteCount = computed(() => {
 })
 
 const annotationCountText = computed(() => {
-  if (isLoading.value) return '同步中…'
+  if (isLoading.value) {
+    return '同步中…'
+  }
+
   return `${annotations.value.length} 条高亮 / ${noteCount.value} 条笔记`
 })
 
 const providerTone = computed(() => {
-  const s = providerStatuses.value.find((provider) => provider.provider === translationPreferences.value.defaultProvider)
-  if (!s) return 'status-idle'
-  if (s.status === 'available') return 'status-ready'
-  if (s.status === 'not_configured') return 'status-warn'
+  const status = providerStatuses.value.find((provider) => provider.provider === translationPreferences.value.defaultProvider)
+
+  if (!status) {
+    return 'status-idle'
+  }
+
+  if (status.status === 'available') {
+    return 'status-ready'
+  }
+
+  if (status.status === 'not_configured') {
+    return 'status-warn'
+  }
+
   return 'status-error'
 })
 
 const providerText = computed(() => {
-  const s = providerStatuses.value.find((provider) => provider.provider === translationPreferences.value.defaultProvider)
-  if (!s) return '翻译未检测'
-  if (s.status === 'available') return s.userConfigured ? '个人翻译可用' : '后端翻译可用'
-  if (s.status === 'not_configured') return '翻译未配置'
+  const status = providerStatuses.value.find((provider) => provider.provider === translationPreferences.value.defaultProvider)
+
+  if (!status) {
+    return '翻译未检测'
+  }
+
+  if (status.status === 'available') {
+    return status.userConfigured ? '个人翻译可用' : '后端翻译可用'
+  }
+
+  if (status.status === 'not_configured') {
+    return '翻译未配置'
+  }
+
   return '翻译不可用'
 })
 </script>
 
 <template>
   <main class="popup-shell mc-page-shell">
-    <!-- 顶栏 -->
     <header class="toolbar">
       <div class="toolbar-brand">
   <main class="popup-shell mc-page-shell">
@@ -85,7 +107,6 @@ const providerText = computed(() => {
       </div>
     </header>
 
-    <!-- 语言条 -->
     <TranslationLanguageCard
     <!-- 语言条 -->
     <TranslationLanguageCard
@@ -96,7 +117,6 @@ const providerText = computed(() => {
       @save="saveLanguagePreferences"
     />
 
-    <!-- 翻译状态 -->
     <div class="status-row">
       <span :class="['status-dot', providerTone]"></span>
       <span class="status-text">{{ providerText }}</span>
@@ -107,10 +127,8 @@ const providerText = computed(() => {
       <span class="status-text">{{ providerText }}</span>
     </div>
 
-    <!-- 错误 -->
-    <p v-if="errorMessage" class="error-message mc-error-message">{{ errorMessage }}</p>
+    <p v-if="errorMessage" class="mc-error-message popup-error">{{ errorMessage }}</p>
 
-    <!-- 标注列表 -->
     <AnnotationList
       :annotations="annotations"
       :is-loading="isLoading"
@@ -118,7 +136,6 @@ const providerText = computed(() => {
       @remove="requestRemoveAnnotation"
     />
 
-    <!-- 清空确认弹窗 -->
     <div v-if="isClearConfirmOpen" class="confirm-overlay" @click="cancelClearCurrentPage">
       <section class="confirm-dialog" @click.stop>
         <p class="confirm-badge">需要确认</p>
@@ -142,8 +159,6 @@ const providerText = computed(() => {
       </section>
     </div>
 
-    <!-- 删除确认弹窗 -->
-    <!-- 删除确认弹窗 -->
     <div v-if="isDeleteConfirmOpen" class="confirm-overlay" @click="cancelRemoveAnnotation">
       <section class="confirm-dialog" @click.stop>
         <p class="confirm-badge">删除确认</p>
@@ -172,15 +187,14 @@ const providerText = computed(() => {
   position: relative;
   width: 360px;
   min-height: 480px;
-  padding: 0;
-  background: var(--mc-page-bg, #f8f9fb);
+  background: var(--mc-page-bg);
 }
 
-/* 顶栏 */
 .toolbar {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   padding: 12px 14px 10px;
   background: #fff;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
@@ -193,30 +207,7 @@ const providerText = computed(() => {
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(135deg, #f59e0b, #ef4444, #8b5cf6, #3b82f6);
-  min-height: 480px;
-  padding: 0;
-  background: var(--mc-page-bg, #f8f9fb);
-}
-
-/* 顶栏 */
-.toolbar {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px 14px 10px;
-  background: #fff;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.toolbar::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(135deg, #f59e0b, #ef4444, #8b5cf6, #3b82f6);
+  background: var(--mc-brand-gradient);
 }
 
 .toolbar-brand {
@@ -233,124 +224,63 @@ const providerText = computed(() => {
 .toolbar-brand h1 {
 .toolbar-brand h1 {
   margin: 0;
+  flex-shrink: 0;
   font-size: 18px;
   font-weight: 700;
-  flex-shrink: 0;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--mc-ink-strong);
 }
 
 .toolbar-page {
-  font-size: 18px;
-  font-weight: 700;
-  flex-shrink: 0;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.toolbar-page {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--mc-muted);
   font-size: 12px;
-  color: var(--mc-muted, #64748b);
-  white-space: nowrap;
-  overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 0;
-  color: var(--mc-muted, #64748b);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
 }
 
 .toolbar-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
 }
 
 .toolbar-count {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--mc-accent, #6366f1);
-  margin-right: auto;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--mc-accent-soft, #eef2ff);
+  min-width: 0;
+  flex: 1;
+  color: var(--mc-muted);
+  font-size: 12px;
 }
 
 .icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-.toolbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.toolbar-count {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--mc-accent, #6366f1);
-  margin-right: auto;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--mc-accent-soft, #eef2ff);
-}
-
-.icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
   border: 0;
   border-radius: 8px;
-  background: transparent;
-  font-size: 15px;
-  border-radius: 8px;
-  background: transparent;
-  font-size: 15px;
+  width: 30px;
+  height: 30px;
+  background: var(--mc-surface-soft);
   cursor: pointer;
-  flex-shrink: 0;
-  transition: background 120ms ease;
-  flex-shrink: 0;
-  transition: background 120ms ease;
 }
 
-.icon-btn:hover { background: #f1f5f9; }
-.icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.icon-btn-danger:hover:not(:disabled) { background: var(--mc-danger-bg, #fef2f2); }
+.icon-btn:hover {
+  background: #e2e8f0;
+}
 
-/* 翻译状态行 */
+.icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.icon-btn-danger:hover {
+  background: #fee2e2;
+}
+
 .status-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 14px 6px;
-.icon-btn:hover { background: #f1f5f9; }
-.icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.icon-btn-danger:hover:not(:disabled) { background: var(--mc-danger-bg, #fef2f2); }
-
-/* 翻译状态行 */
-.status-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 14px 6px;
-}
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #fff;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 .status-ready { background: #22c55e; }
@@ -362,170 +292,131 @@ const providerText = computed(() => {
   font-size: 11px;
   color: var(--mc-muted, #64748b);
 .status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #cbd5e1;
 }
 
-.status-ready { background: #22c55e; }
-.status-idle  { background: #94a3b8; }
-.status-warn  { background: #f59e0b; }
-.status-error { background: #ef4444; }
+.status-ready {
+  background: #22c55e;
+}
+
+.status-warn {
+  background: #f59e0b;
+}
+
+.status-error {
+  background: #ef4444;
+}
 
 .status-text {
-  font-size: 11px;
-  color: var(--mc-muted, #64748b);
+  color: var(--mc-muted-strong);
+  font-size: 12px;
 }
 
-/* 确认弹窗 */
-/* 确认弹窗 */
+.popup-error {
+  margin: 12px 14px 0;
+}
+
 .confirm-overlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  z-index: 10;
-  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
-  background: rgba(15, 15, 26, 0.25);
-  backdrop-filter: blur(8px);
-  background: rgba(15, 15, 26, 0.25);
-  backdrop-filter: blur(8px);
+  background: rgba(15, 23, 42, 0.3);
 }
 
 .confirm-dialog {
   width: 100%;
+  max-width: 320px;
+  border-radius: 14px;
+  background: #fff;
   padding: 18px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 14px;
-  background: #fff;
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.12);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 14px;
-  background: #fff;
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.2);
 }
 
 .confirm-badge {
-  display: inline-flex;
-  margin: 0 0 6px;
-  padding: 2px 8px;
-  margin: 0 0 6px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--mc-danger-bg, #fef2f2);
-  color: var(--mc-danger-text, #dc2626);
+  margin: 0;
+  color: var(--mc-accent);
   font-size: 11px;
   font-weight: 600;
-  background: var(--mc-danger-bg, #fef2f2);
-  color: var(--mc-danger-text, #dc2626);
-  font-size: 11px;
-  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .confirm-dialog h2 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  font-size: 16px;
-  font-weight: 600;
+  margin: 8px 0 0;
+  font-size: 17px;
 }
 
 .confirm-desc {
-  margin: 6px 0 12px;
+  margin: 8px 0 0;
   color: var(--mc-muted);
-  font-size: 12px;
-.confirm-desc {
-  margin: 6px 0 12px;
-  color: var(--mc-muted);
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .confirm-meta {
   display: grid;
-  gap: 6px;
-  margin-bottom: 14px;
-  gap: 6px;
-  margin-bottom: 14px;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--mc-surface-soft);
 }
 
 .confirm-meta p {
-  display: grid;
-  gap: 2px;
-  gap: 2px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
   margin: 0;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: #f8f9fb;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: #f8f9fb;
+  font-size: 12px;
 }
 
 .confirm-meta span {
   color: var(--mc-muted);
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--mc-muted);
-  font-size: 10px;
-  font-weight: 500;
 }
 
 .confirm-meta strong {
-  color: var(--mc-ink);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--mc-ink);
-  font-size: 12px;
-  font-weight: 500;
+  min-width: 0;
+  text-align: right;
   word-break: break-word;
 }
 
 .confirm-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  gap: 8px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
 }
 
 .btn-secondary,
 .btn-danger {
   border: 0;
   border-radius: 8px;
-  padding: 8px 12px;
-  font: inherit;
+  padding: 8px 14px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 120ms ease;
 }
 
-.btn-secondary { background: #f1f5f9; color: #475569; }
-.btn-secondary:hover { background: #e2e8f0; }
-.btn-danger { background: #dc2626; color: #fff; }
-.btn-danger:hover { background: #b91c1c; }
-.btn-secondary:disabled,
-.btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-secondary,
+.btn-secondary {
+  background: var(--mc-surface-soft);
+  color: var(--mc-muted-strong);
+}
+
 .btn-danger {
-  border: 0;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 120ms ease;
+  background: var(--mc-danger-bg);
+  color: var(--mc-danger-text);
 }
 
-.btn-secondary { background: #f1f5f9; color: #475569; }
-.btn-secondary:hover { background: #e2e8f0; }
-.btn-danger { background: #dc2626; color: #fff; }
-.btn-danger:hover { background: #b91c1c; }
 .btn-secondary:disabled,
-.btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 </style>
 

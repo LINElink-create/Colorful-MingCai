@@ -1,19 +1,17 @@
 import browser from 'webextension-polyfill'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { getActivePageInfo, openExtensionPage, reloadTabById } from '../../modules/browser/tabs'
+import { sendMessageToBackground } from '../../modules/messaging/sendToBackground'
+import { sendMessageToTab } from '../../modules/messaging/sendToActiveTab'
 import { MESSAGE_TYPES } from '../../shared/constants/messageTypes'
 import { STORAGE_KEYS } from '../../shared/constants/storageKeys'
 import type { AnnotationRecord } from '../../shared/types/annotation'
 import type { BackendConfigResult, CloudSyncResult, RuntimeMessageResult } from '../../shared/types/message'
 import type { ActivePageInfo } from '../../shared/types/page'
 import type { TranslationPreferences } from '../../shared/types/translation'
-import type { TranslationPreferences } from '../../shared/types/translation'
-import { getActivePageInfo, openExtensionPage, reloadTabById } from '../../modules/browser/tabs'
-import { sendMessageToBackground } from '../../modules/messaging/sendToBackground'
-import { sendMessageToTab } from '../../modules/messaging/sendToActiveTab'
 import { getPageKey } from '../../shared/utils/pageKey'
+import { useSettingsState } from '../settings/useSettingsState'
 import { loadCurrentPageAnnotations } from './useCurrentPageAnnotations'
-import { useSettingsState } from '../settings/useSettingsState'
-import { useSettingsState } from '../settings/useSettingsState'
 
 const emptyPageInfo = (): ActivePageInfo => ({
   tabId: null,
@@ -21,10 +19,6 @@ const emptyPageInfo = (): ActivePageInfo => ({
   url: ''
 })
 
-// Popup 的状态编排中心。
-// 这里统一管理“当前页摘要、语言偏好、单条删除确认、清空确认、历史与设置入口”等动作，
-// 这里统一管理“当前页摘要、语言偏好、单条删除确认、清空确认、历史与设置入口”等动作，
-// 让 App.vue 继续保持展示层角色，不直接耦合 tabs、storage 或 runtime message 细节。
 export const usePopupState = () => {
   const settingsState = useSettingsState({ autoRefresh: false, autoSync: false })
   const isLoading = ref(false)
@@ -61,7 +55,6 @@ export const usePopupState = () => {
   }
 
   const refresh = async () => {
-    // 刷新 UI 所需状态：加载当前活跃标签页信息、读取对应注释，并同步翻译配置
     isLoading.value = true
     localErrorMessage.value = ''
     settingsState.clearError()
@@ -162,7 +155,7 @@ export const usePopupState = () => {
   }
 
   const removeAnnotation = async (annotationId: string) => {
-    if (!pageInfo.value.tabId) {
+    if (pageInfo.value.tabId === null) {
       localErrorMessage.value = '当前标签页不可用，无法删除这条高亮'
       return
     }
@@ -172,10 +165,10 @@ export const usePopupState = () => {
     localErrorMessage.value = ''
 
     try {
-      const result = (await browser.tabs.sendMessage(pageInfo.value.tabId, {
+      const result = await browser.tabs.sendMessage(pageInfo.value.tabId, {
         type: MESSAGE_TYPES.REMOVE_ANNOTATION_BY_ID,
         payload: { annotationId }
-      })) as RuntimeMessageResult<{ bucket: { annotations?: AnnotationRecord[] } | null; removedCount: number }>
+      }) as RuntimeMessageResult<{ bucket: { annotations?: AnnotationRecord[] } | null; removedCount: number }>
 
       if (!result.ok) {
         throw new Error(result.error)
