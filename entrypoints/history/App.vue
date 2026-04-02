@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { computed, ref } from 'vue'
 import { useHistoryOverview } from '../../src/features/history/useHistoryOverview'
 
 const {
@@ -76,7 +75,7 @@ const filteredBuckets = computed(() => {
         <span>关键词</span>
         <input v-model="keyword" type="text" placeholder="搜索标题、链接、摘录、备注或颜色">
       </label>
-      <label class="filter-field filter-field-color">
+      <label class="filter-field">
         <span>颜色</span>
         <select v-model="activeColor">
           <option value="all">全部颜色</option>
@@ -152,23 +151,6 @@ const filteredBuckets = computed(() => {
   padding: 18px 20px;
   position: relative;
   overflow: hidden;
-  padding: 24px;
-  max-width: 1100px;
-  margin: 0 auto;
-}
-
-/* 顶栏 */
-.history-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px 20px;
-  background: #fff;
-  border-radius: 14px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-  position: relative;
-  overflow: hidden;
 }
 
 .history-header::before {
@@ -179,15 +161,6 @@ const filteredBuckets = computed(() => {
   right: 0;
   height: 3px;
   background: var(--mc-brand-gradient);
-}
-
-.header-left h1 {
-.history-header::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  background: linear-gradient(135deg, #f59e0b, #ef4444, #8b5cf6, #3b82f6);
 }
 
 .header-left h1 {
@@ -216,44 +189,13 @@ const filteredBuckets = computed(() => {
 }
 
 .filter-bar {
-.header-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.btn-ghost {
-  border: 0;
-  border-radius: 8px;
-  padding: 8px 14px;
-  background: #f1f5f9;
-  color: #475569;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 120ms ease;
-}
-
-.btn-ghost:hover { background: #e2e8f0; }
-.btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
-
-/* 筛选栏 */
-.filter-bar {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(160px, 0.8fr);
-  grid-template-columns: minmax(0, 1.6fr) minmax(160px, 0.8fr);
   gap: 12px;
-  margin-top: 16px;
   margin-top: 16px;
   padding: 14px 16px;
 }
 
-.filter-field span {
-  color: var(--mc-muted, #64748b);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 .filter-field {
   display: grid;
   gap: 6px;
@@ -284,15 +226,8 @@ const filteredBuckets = computed(() => {
   outline: none;
   border-color: var(--mc-accent);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-.filter-field input:focus,
-.filter-field select:focus {
-  outline: none;
-  border-color: var(--mc-accent, #6366f1);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
-.empty-panel {
-/* 空态 */
 .empty-panel {
   margin-top: 16px;
   padding: 24px;
@@ -313,8 +248,6 @@ const filteredBuckets = computed(() => {
 
 .bucket-list {
   display: grid;
-  gap: 14px;
-  margin-top: 16px;
   gap: 14px;
   margin-top: 16px;
 }
@@ -341,9 +274,6 @@ const filteredBuckets = computed(() => {
   margin-top: 6px;
   color: var(--mc-muted);
   font-size: 13px;
-  margin-top: 6px;
-  color: var(--mc-muted, #64748b);
-  font-size: 13px;
   text-decoration: none;
   word-break: break-all;
 }
@@ -352,12 +282,9 @@ const filteredBuckets = computed(() => {
   color: var(--mc-accent);
 }
 
-.bucket-link:hover { color: var(--mc-accent, #6366f1); }
-
 .bucket-actions {
   display: grid;
   justify-items: end;
-  gap: 8px;
   gap: 8px;
 }
 
@@ -385,7 +312,6 @@ const filteredBuckets = computed(() => {
 .annotation-list {
   display: grid;
   gap: 8px;
-  gap: 8px;
   list-style: none;
   margin: 16px 0 0;
   padding: 0;
@@ -401,13 +327,10 @@ const filteredBuckets = computed(() => {
   background: #f1f5f9;
 }
 
-.annotation-item:hover { background: #f1f5f9; }
-
 .annotation-topline {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
   gap: 10px;
 }
 
@@ -415,12 +338,8 @@ const filteredBuckets = computed(() => {
   display: inline-flex;
   align-items: center;
   padding: 2px 8px;
-  padding: 2px 8px;
   border-radius: 999px;
   color: var(--mc-ink);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--mc-ink, #1a1a2e);
   font-size: 11px;
   font-weight: 600;
 }
@@ -434,9 +353,6 @@ const filteredBuckets = computed(() => {
   margin: 10px 0 0;
   color: var(--mc-ink);
   font-size: 14px;
-  margin: 10px 0 0;
-  color: var(--mc-ink, #1a1a2e);
-  font-size: 14px;
   line-height: 1.6;
 }
 
@@ -447,12 +363,6 @@ const filteredBuckets = computed(() => {
   background: #fff;
   color: var(--mc-muted-strong);
   font-size: 13px;
-  margin: 8px 0 0;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: #fff;
-  color: var(--mc-muted-strong, #475569);
-  font-size: 13px;
   line-height: 1.6;
   white-space: pre-wrap;
 }
@@ -460,7 +370,6 @@ const filteredBuckets = computed(() => {
 .annotation-actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 10px;
   margin-top: 10px;
 }
 
@@ -505,4 +414,3 @@ const filteredBuckets = computed(() => {
   }
 }
 </style>
-

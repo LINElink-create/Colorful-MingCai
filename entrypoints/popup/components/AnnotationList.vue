@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { ANNOTATION_COLORS } from '../../../src/shared/constants/annotationColors'
-import { ANNOTATION_COLORS } from '../../../src/shared/constants/annotationColors'
 import type { AnnotationRecord } from '../../../src/shared/types/annotation'
-
-const colorMetaMap = Object.fromEntries(ANNOTATION_COLORS.map((item) => [item.value, item]))
 
 const colorMetaMap = Object.fromEntries(ANNOTATION_COLORS.map((item) => [item.value, item]))
 
@@ -16,8 +13,6 @@ const emit = defineEmits<{
   jump: [annotation: AnnotationRecord]
   remove: [annotationId: string]
 }>()
-
-const getColorMeta = (color: AnnotationRecord['color']) => colorMetaMap[color]
 
 const getColorMeta = (color: AnnotationRecord['color']) => colorMetaMap[color]
 </script>
@@ -60,9 +55,6 @@ const getColorMeta = (color: AnnotationRecord['color']) => colorMetaMap[color]
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .list-header p,
@@ -86,23 +78,8 @@ const getColorMeta = (color: AnnotationRecord['color']) => colorMetaMap[color]
   text-transform: uppercase;
 }
 
-.list-header h3 {
-  margin: 4px 0 0;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.list-header p {
-  color: var(--mc-accent, #6366f1);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 .annotation-list {
   display: grid;
-  gap: 8px;
   gap: 8px;
   list-style: none;
   padding: 0;
@@ -164,42 +141,22 @@ const getColorMeta = (color: AnnotationRecord['color']) => colorMetaMap[color]
   border-radius: 6px;
   background: transparent;
   color: var(--mc-muted, #94a3b8);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--mc-muted, #94a3b8);
   cursor: pointer;
   font-size: 14px;
-  font-size: 14px;
   line-height: 1;
-  transition: background 120ms ease, color 120ms ease;
   transition: background 120ms ease, color 120ms ease;
 }
 
 .remove-button:hover {
   background: var(--mc-danger-bg, #fef2f2);
   color: var(--mc-danger-text, #dc2626);
-  background: var(--mc-danger-bg, #fef2f2);
-  color: var(--mc-danger-text, #dc2626);
 }
 
 .quote {
   margin-top: 8px;
-  margin-top: 8px;
   font-size: 13px;
   font-weight: 500;
-  font-weight: 500;
   line-height: 1.6;
-  color: var(--mc-ink, #1a1a2e);
-}
-
-.note {
-  margin: 6px 0 0;
-  padding: 8px 10px;
-  border-radius: 6px;
-  background: #fff;
-  color: var(--mc-muted-strong, #475569);
-  font-size: 12px;
-  line-height: 1.5;
   color: var(--mc-ink, #1a1a2e);
 }
 
@@ -217,15 +174,11 @@ const getColorMeta = (color: AnnotationRecord['color']) => colorMetaMap[color]
 .meta {
   font-size: 11px;
   color: var(--mc-muted, #94a3b8);
-  font-size: 11px;
-  color: var(--mc-muted, #94a3b8);
 }
 
 .empty-state {
   color: var(--mc-muted, #64748b);
-  color: var(--mc-muted, #64748b);
   font-size: 13px;
-  line-height: 1.6;
   line-height: 1.6;
 }
 </style>

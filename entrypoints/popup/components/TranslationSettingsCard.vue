@@ -81,6 +81,7 @@ const currentProviderStatus = computed(() => {
 
 const currentProviderTone = computed(() => {
   const currentProvider = currentProviderStatus.value
+
   if (!currentProvider) {
     return 'status-chip-idle'
   }
@@ -98,6 +99,7 @@ const currentProviderTone = computed(() => {
 
 const currentProviderText = computed(() => {
   const currentProvider = currentProviderStatus.value
+
   if (!currentProvider) {
     return '未检测'
   }
@@ -113,24 +115,9 @@ const currentProviderText = computed(() => {
   return '服务暂不可用'
 })
 
-const providerStatusDetail = computed(() => {
-  if (!primaryProviderStatus.value) {
-    return '先填写后端地址，再保存并检测服务状态。'
-  }
-
-  if (currentProvider.status === 'available') {
-    return currentProvider.userConfigured ? '个人配置可用' : '平台服务可用'
-  }
-
-  if (currentProvider.status === 'not_configured') {
-    return '服务未配置'
-  }
-
-  return '后端可访问，但翻译服务最近返回异常，请检查日志或错误码。'
-})
-
 const currentProviderDetail = computed(() => {
   const currentProvider = currentProviderStatus.value
+
   if (!currentProvider) {
     return '服务地址已固定。'
   }
@@ -185,6 +172,7 @@ const saveProviderConfig = () => {
 
 const clearProviderConfig = () => {
   emit('deleteProviderConfig', formState.defaultProvider)
+
   if (formState.defaultProvider === 'youdao') {
     formState.youdaoAppKey = ''
     formState.youdaoAppSecret = ''
@@ -209,9 +197,7 @@ const clearProviderConfig = () => {
       使用明彩后端，无需填写服务地址。可选择默认服务商，并保存个人 API 配置。
     </p>
 
-    <p class="provider-status-detail">
-      {{ currentProviderDetail }}
-    </p>
+    <p class="provider-status-detail">{{ currentProviderDetail }}</p>
 
     <div class="provider-overview-grid">
       <article
@@ -227,7 +213,7 @@ const clearProviderConfig = () => {
       </article>
     </div>
 
-    <div class="field-grid">
+    <div class="field-grid field-grid-three">
       <label class="field">
         <span>默认服务商</span>
         <select v-model="formState.defaultProvider" :disabled="disabled || isSaving">
@@ -264,7 +250,7 @@ const clearProviderConfig = () => {
       <input v-model="formState.autoTranslateEnabled" :disabled="disabled || isSaving" type="checkbox">
     </label>
 
-    <div class="button-row">
+    <div class="button-row button-row-single">
       <button class="save-button" :disabled="disabled || isSaving" type="button" @click="savePreferences">
         {{ isSaving ? '保存中...' : '保存翻译偏好' }}
       </button>
@@ -278,9 +264,7 @@ const clearProviderConfig = () => {
         </div>
       </div>
 
-      <p v-if="!isAuthenticated" class="provider-status-note">
-        登录后可保存个人 API 配置。
-      </p>
+      <p v-if="!isAuthenticated" class="provider-status-note">登录后可保存个人 API 配置。</p>
 
       <template v-if="formState.defaultProvider === 'youdao'">
         <div class="field-grid field-grid-two">
@@ -334,10 +318,66 @@ const clearProviderConfig = () => {
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  padding: 16px;
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.settings-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-header p {
+  margin: 0;
+  color: var(--mc-accent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.settings-header h3 {
+  margin: 4px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--mc-ink-strong);
+}
+
+.settings-description,
+.provider-status-detail {
+  margin: 12px 0 0;
+  color: var(--mc-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-chip-idle {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.status-chip-ready {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-chip-warn {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-chip-error {
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
 .provider-overview-grid,
@@ -371,10 +411,13 @@ const clearProviderConfig = () => {
   font-size: 14px;
 }
 
-.provider-overview-card p {
+.provider-overview-card p,
+.provider-config-header p,
+.toggle-row p {
   margin: 4px 0 0;
-  color: #64748b;
+  color: var(--mc-muted);
   font-size: 12px;
+  line-height: 1.5;
 }
 
 .provider-overview-card span {
@@ -389,6 +432,10 @@ const clearProviderConfig = () => {
 }
 
 .field-grid {
+  grid-template-columns: 1fr;
+}
+
+.field-grid-three {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
@@ -402,24 +449,28 @@ const clearProviderConfig = () => {
 }
 
 .field span {
-  color: var(--mc-muted-strong, #475569);
+  color: var(--mc-muted-strong);
   font-size: 12px;
 }
 
 .field input,
 .field select {
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  border-radius: 10px;
-  padding: 10px 12px;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 9px 12px;
+  background: #fff;
+  color: var(--mc-ink);
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .field input:focus,
 .field select:focus {
   outline: none;
-  border-color: var(--mc-accent, #6366f1);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+  border-color: var(--mc-accent);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .field-span-full {
@@ -427,22 +478,20 @@ const clearProviderConfig = () => {
 }
 
 .toggle-row {
-  margin-top: 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: #f8fafc;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--mc-surface-soft);
 }
 
-.toggle-row p,
-.provider-config-header p {
-  margin: 4px 0 0;
-  color: var(--mc-muted, #64748b);
-  font-size: 12px;
-  line-height: 1.5;
+.toggle-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--mc-accent);
 }
 
 .provider-config-panel {
@@ -453,7 +502,7 @@ const clearProviderConfig = () => {
 
 .provider-status-note {
   margin: 10px 0 0;
-  color: var(--mc-warn-text, #d97706);
+  color: var(--mc-warn-text);
   font-size: 12px;
 }
 
@@ -461,11 +510,15 @@ const clearProviderConfig = () => {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.button-row-single {
+  grid-template-columns: 1fr;
+}
+
 .save-button,
 .secondary-button {
   border: 0;
-  border-radius: 10px;
-  padding: 10px 14px;
+  border-radius: 8px;
+  padding: 9px 14px;
   font: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -473,13 +526,17 @@ const clearProviderConfig = () => {
 }
 
 .save-button {
-  background: linear-gradient(135deg, #2563eb, #0f766e);
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   color: #fff;
 }
 
 .secondary-button {
   background: #e2e8f0;
   color: #334155;
+}
+
+.save-button:hover {
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
 }
 
 .save-button:disabled,
@@ -492,7 +549,7 @@ const clearProviderConfig = () => {
 
 @media (max-width: 640px) {
   .provider-overview-grid,
-  .field-grid,
+  .field-grid-three,
   .field-grid-two,
   .button-row {
     grid-template-columns: 1fr;
@@ -503,151 +560,5 @@ const clearProviderConfig = () => {
     flex-direction: column;
     align-items: flex-start;
   }
-}
-
-.field input,
-.field select {
-  width: 100%;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 9px 12px;
-  background: #fff;
-  color: var(--mc-ink, #1a1a2e);
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 9px 12px;
-  background: #fff;
-  color: var(--mc-ink, #1a1a2e);
-  font: inherit;
-  font-size: 13px;
-  font-size: 13px;
-  box-sizing: border-box;
-  transition: border-color 160ms ease;
-}
-
-.field input:focus,
-.field select:focus {
-  outline: none;
-  border-color: var(--mc-accent, #6366f1);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-.toggle-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 12px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: var(--mc-surface-soft, #f8f9fb);
-}
-
-.toggle-row strong,
-.toggle-row p {
-  margin: 0;
-}
-
-.toggle-row strong {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.toggle-row p {
-  margin-top: 2px;
-  color: var(--mc-muted, #64748b);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.toggle-row input {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--mc-accent, #6366f1);
-  transition: border-color 160ms ease;
-}
-
-.field input:focus,
-.field select:focus {
-  outline: none;
-  border-color: var(--mc-accent, #6366f1);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-.toggle-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 12px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: var(--mc-surface-soft, #f8f9fb);
-}
-
-.toggle-row strong,
-.toggle-row p {
-  margin: 0;
-}
-
-.toggle-row strong {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.toggle-row p {
-  margin-top: 2px;
-  color: var(--mc-muted, #64748b);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.toggle-row input {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--mc-accent, #6366f1);
-}
-
-.save-button {
-  width: 100%;
-  margin-top: 14px;
-  margin-top: 14px;
-  border: 0;
-  border-radius: 8px;
-  padding: 9px 14px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  color: #fff;
-  border-radius: 8px;
-  padding: 9px 14px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  color: #fff;
-  cursor: pointer;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  transition: box-shadow 160ms ease;
-}
-
-.save-button:hover {
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
-}
-
-.save-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-  font-size: 13px;
-  font-weight: 600;
-  transition: box-shadow 160ms ease;
-}
-
-.save-button:hover {
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
-}
-
-.save-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
 }
 </style>

@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { computed } from 'vue'
 import AnnotationList from './components/AnnotationList.vue'
-import TranslationLanguageCard from './components/TranslationLanguageCard.vue'
 import TranslationLanguageCard from './components/TranslationLanguageCard.vue'
 import { usePopupState } from '../../src/features/popup/usePopupState'
 
@@ -27,7 +25,6 @@ const {
   requestRemoveAnnotation,
   cancelRemoveAnnotation,
   confirmRemoveAnnotation,
-  saveLanguagePreferences
   saveLanguagePreferences
 } = usePopupState()
 
@@ -86,10 +83,6 @@ const providerText = computed(() => {
   <main class="popup-shell mc-page-shell">
     <header class="toolbar">
       <div class="toolbar-brand">
-  <main class="popup-shell mc-page-shell">
-    <!-- 顶栏 -->
-    <header class="toolbar">
-      <div class="toolbar-brand">
         <h1>明彩</h1>
         <span class="toolbar-page" :title="pageInfo.url">{{ pageTitle }}</span>
       </div>
@@ -108,20 +101,12 @@ const providerText = computed(() => {
     </header>
 
     <TranslationLanguageCard
-    <!-- 语言条 -->
-    <TranslationLanguageCard
       :preferences="translationPreferences"
       :disabled="isLoading"
       :is-saving="isSavingTranslationConfig"
       @save="saveLanguagePreferences"
-      @save="saveLanguagePreferences"
     />
 
-    <div class="status-row">
-      <span :class="['status-dot', providerTone]"></span>
-      <span class="status-text">{{ providerText }}</span>
-    </div>
-    <!-- 翻译状态 -->
     <div class="status-row">
       <span :class="['status-dot', providerTone]"></span>
       <span class="status-text">{{ providerText }}</span>
@@ -144,13 +129,8 @@ const providerText = computed(() => {
         <div class="confirm-meta">
           <p><span>页面</span><strong>{{ pageInfo.title || pageInfo.url || '未识别' }}</strong></p>
           <p><span>数量</span><strong>{{ annotations.length }}</strong></p>
-          <p><span>页面</span><strong>{{ pageInfo.title || pageInfo.url || '未识别' }}</strong></p>
-          <p><span>数量</span><strong>{{ annotations.length }}</strong></p>
         </div>
         <div class="confirm-actions">
-          <button class="btn-secondary" :disabled="isLoading" @click="cancelClearCurrentPage">取消</button>
-          <button class="btn-danger" :disabled="isLoading" @click="clearCurrentPage">
-            {{ isLoading ? '清空中…' : '确认清空' }}
           <button class="btn-secondary" :disabled="isLoading" @click="cancelClearCurrentPage">取消</button>
           <button class="btn-danger" :disabled="isLoading" @click="clearCurrentPage">
             {{ isLoading ? '清空中…' : '确认清空' }}
@@ -166,12 +146,8 @@ const providerText = computed(() => {
         <p class="confirm-desc">将从本地记录中移除该高亮及其附加笔记。</p>
         <div class="confirm-meta">
           <p><span>内容</span><strong>{{ pendingDeleteAnnotation?.textQuote || '未找到' }}</strong></p>
-          <p><span>内容</span><strong>{{ pendingDeleteAnnotation?.textQuote || '未找到' }}</strong></p>
         </div>
         <div class="confirm-actions">
-          <button class="btn-secondary" :disabled="isLoading" @click="cancelRemoveAnnotation">取消</button>
-          <button class="btn-danger" :disabled="isLoading" @click="confirmRemoveAnnotation">
-            {{ isLoading ? '删除中…' : '确认删除' }}
           <button class="btn-secondary" :disabled="isLoading" @click="cancelRemoveAnnotation">取消</button>
           <button class="btn-danger" :disabled="isLoading" @click="confirmRemoveAnnotation">
             {{ isLoading ? '删除中…' : '确认删除' }}
@@ -211,17 +187,12 @@ const providerText = computed(() => {
 }
 
 .toolbar-brand {
-.toolbar-brand {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  min-width: 0;
   align-items: baseline;
   gap: 8px;
   min-width: 0;
 }
 
-.toolbar-brand h1 {
 .toolbar-brand h1 {
   margin: 0;
   flex-shrink: 0;
@@ -283,14 +254,6 @@ const providerText = computed(() => {
   border-bottom: 1px solid rgba(0, 0, 0, 0.04);
 }
 
-.status-ready { background: #22c55e; }
-.status-idle  { background: #94a3b8; }
-.status-warn  { background: #f59e0b; }
-.status-error { background: #ef4444; }
-
-.status-text {
-  font-size: 11px;
-  color: var(--mc-muted, #64748b);
 .status-dot {
   width: 8px;
   height: 8px;
@@ -300,6 +263,10 @@ const providerText = computed(() => {
 
 .status-ready {
   background: #22c55e;
+}
+
+.status-idle {
+  background: #94a3b8;
 }
 
 .status-warn {
@@ -419,4 +386,3 @@ const providerText = computed(() => {
   cursor: not-allowed;
 }
 </style>
-
