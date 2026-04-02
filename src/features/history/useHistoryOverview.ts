@@ -4,10 +4,10 @@ import { listPageBuckets, removeAnnotationsByIds } from '../../modules/annotatio
 import { findTabIdsByPageUrl, openExtensionPage, openTab } from '../../modules/browser/tabs'
 import { sendMessageToBackground } from '../../modules/messaging/sendToBackground'
 import { sendMessageToTab } from '../../modules/messaging/sendToActiveTab'
+import { ANNOTATION_COLORS } from '../../shared/constants/annotationColors'
 import { EXPORT_FORMATS, type ExportFormat } from '../../shared/constants/exportFormats'
 import { MESSAGE_TYPES } from '../../shared/constants/messageTypes'
 import { STORAGE_KEYS } from '../../shared/constants/storageKeys'
-import { ANNOTATION_COLORS } from '../../shared/constants/annotationColors'
 import type { AnnotationColor, AnnotationRecord, PageAnnotationBucket } from '../../shared/types/annotation'
 
 const colorMetaMap = Object.fromEntries(ANNOTATION_COLORS.map((item) => [item.value, item])) as Record<
@@ -93,10 +93,6 @@ export const useHistoryOverview = () => {
     await openExtensionPage('/settings.html')
   }
 
-  const openSettingsPage = async () => {
-    await openExtensionPage('/settings.html')
-  }
-
   const syncRemoveFromOpenTabs = async (url: string, annotationId: string) => {
     const tabIds = await findTabIdsByPageUrl(url)
 
@@ -159,10 +155,7 @@ export const useHistoryOverview = () => {
     refresh,
     exportAnnotations,
     importAnnotations,
-    exportAnnotations,
-    importAnnotations,
     openOriginalPage,
-    openSettingsPage,
     openSettingsPage,
     removeAnnotation,
     getColorMeta
