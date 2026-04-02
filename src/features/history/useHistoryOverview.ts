@@ -1,13 +1,10 @@
 import browser from 'webextension-polyfill'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { removeAnnotationsByIds, listPageBuckets } from '../../modules/annotations/repository/annotationRepository'
-import { EXPORT_FORMATS, type ExportFormat } from '../../shared/constants/exportFormats'
+import { listPageBuckets, removeAnnotationsByIds } from '../../modules/annotations/repository/annotationRepository'
 import { findTabIdsByPageUrl, openExtensionPage, openTab } from '../../modules/browser/tabs'
-import { EXPORT_FORMATS, type ExportFormat } from '../../shared/constants/exportFormats'
-import { findTabIdsByPageUrl, openExtensionPage, openTab } from '../../modules/browser/tabs'
+import { sendMessageToBackground } from '../../modules/messaging/sendToBackground'
 import { sendMessageToTab } from '../../modules/messaging/sendToActiveTab'
-import { sendMessageToBackground } from '../../modules/messaging/sendToBackground'
-import { sendMessageToBackground } from '../../modules/messaging/sendToBackground'
+import { EXPORT_FORMATS, type ExportFormat } from '../../shared/constants/exportFormats'
 import { MESSAGE_TYPES } from '../../shared/constants/messageTypes'
 import { STORAGE_KEYS } from '../../shared/constants/storageKeys'
 import { ANNOTATION_COLORS } from '../../shared/constants/annotationColors'
@@ -18,8 +15,6 @@ const colorMetaMap = Object.fromEntries(ANNOTATION_COLORS.map((item) => [item.va
   { value: AnnotationColor; label: string; swatch: string }
 >
 
-// 历史总览页的状态中心。
-// 这里管理的是“全局页面分桶”，而不是 Popup 那种“当前活动 tab”的局部数据视图。
 export const useHistoryOverview = () => {
   const isLoading = ref(false)
   const errorMessage = ref('')
@@ -98,13 +93,7 @@ export const useHistoryOverview = () => {
     await openExtensionPage('/settings.html')
   }
 
-  const openSettingsPage = async () => {
-    await openExtensionPage('/settings.html')
-  }
-
   const syncRemoveFromOpenTabs = async (url: string, annotationId: string) => {
-    // 历史页自身不能碰网页 DOM，只能先找出已打开的同页面 tab，
-    // 再把删除消息发给对应 content script，让页面自己拆掉 mark。
     const tabIds = await findTabIdsByPageUrl(url)
 
     if (tabIds.length === 0) {
@@ -126,7 +115,6 @@ export const useHistoryOverview = () => {
     errorMessage.value = ''
 
     try {
-      // 先删存储，再同步通知所有已打开的同页 tab 移除 DOM 高亮。
       await removeAnnotationsByIds(bucket.url, [annotation.id])
       await syncRemoveFromOpenTabs(bucket.url, annotation.id)
       await refresh()
@@ -146,7 +134,6 @@ export const useHistoryOverview = () => {
       return
     }
 
-    // 任何页面上的创建、删除、导入导出，只要影响分桶存储，历史总览都自动刷新。
     void refresh()
   }
 
@@ -168,10 +155,7 @@ export const useHistoryOverview = () => {
     refresh,
     exportAnnotations,
     importAnnotations,
-    exportAnnotations,
-    importAnnotations,
     openOriginalPage,
-    openSettingsPage,
     openSettingsPage,
     removeAnnotation,
     getColorMeta
