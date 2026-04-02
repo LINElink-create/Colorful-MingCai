@@ -113,6 +113,22 @@ const currentProviderText = computed(() => {
   return '服务暂不可用'
 })
 
+const providerStatusDetail = computed(() => {
+  if (!primaryProviderStatus.value) {
+    return '先填写后端地址，再保存并检测服务状态。'
+  }
+
+  if (currentProvider.status === 'available') {
+    return currentProvider.userConfigured ? '个人配置可用' : '平台服务可用'
+  }
+
+  if (currentProvider.status === 'not_configured') {
+    return '服务未配置'
+  }
+
+  return '后端可访问，但翻译服务最近返回异常，请检查日志或错误码。'
+})
+
 const currentProviderDetail = computed(() => {
   const currentProvider = currentProviderStatus.value
   if (!currentProvider) {
@@ -318,6 +334,10 @@ const clearProviderConfig = () => {
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  padding: 16px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .provider-overview-grid,
@@ -334,7 +354,7 @@ const clearProviderConfig = () => {
 
 .provider-overview-card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   padding: 12px;
@@ -493,9 +513,58 @@ const clearProviderConfig = () => {
   padding: 9px 12px;
   background: #fff;
   color: var(--mc-ink, #1a1a2e);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 9px 12px;
+  background: #fff;
+  color: var(--mc-ink, #1a1a2e);
   font: inherit;
   font-size: 13px;
+  font-size: 13px;
   box-sizing: border-box;
+  transition: border-color 160ms ease;
+}
+
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--mc-accent, #6366f1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--mc-surface-soft, #f8f9fb);
+}
+
+.toggle-row strong,
+.toggle-row p {
+  margin: 0;
+}
+
+.toggle-row strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.toggle-row p {
+  margin-top: 2px;
+  color: var(--mc-muted, #64748b);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.toggle-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--mc-accent, #6366f1);
   transition: border-color 160ms ease;
 }
 
@@ -544,13 +613,30 @@ const clearProviderConfig = () => {
 .save-button {
   width: 100%;
   margin-top: 14px;
+  margin-top: 14px;
   border: 0;
+  border-radius: 8px;
+  padding: 9px 14px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #fff;
   border-radius: 8px;
   padding: 9px 14px;
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   color: #fff;
   cursor: pointer;
   font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  transition: box-shadow 160ms ease;
+}
+
+.save-button:hover {
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+}
+
+.save-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
   font-size: 13px;
   font-weight: 600;
   transition: box-shadow 160ms ease;

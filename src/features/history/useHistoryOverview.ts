@@ -3,7 +3,10 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { removeAnnotationsByIds, listPageBuckets } from '../../modules/annotations/repository/annotationRepository'
 import { EXPORT_FORMATS, type ExportFormat } from '../../shared/constants/exportFormats'
 import { findTabIdsByPageUrl, openExtensionPage, openTab } from '../../modules/browser/tabs'
+import { EXPORT_FORMATS, type ExportFormat } from '../../shared/constants/exportFormats'
+import { findTabIdsByPageUrl, openExtensionPage, openTab } from '../../modules/browser/tabs'
 import { sendMessageToTab } from '../../modules/messaging/sendToActiveTab'
+import { sendMessageToBackground } from '../../modules/messaging/sendToBackground'
 import { sendMessageToBackground } from '../../modules/messaging/sendToBackground'
 import { MESSAGE_TYPES } from '../../shared/constants/messageTypes'
 import { STORAGE_KEYS } from '../../shared/constants/storageKeys'
@@ -95,6 +98,10 @@ export const useHistoryOverview = () => {
     await openExtensionPage('/settings.html')
   }
 
+  const openSettingsPage = async () => {
+    await openExtensionPage('/settings.html')
+  }
+
   const syncRemoveFromOpenTabs = async (url: string, annotationId: string) => {
     // 历史页自身不能碰网页 DOM，只能先找出已打开的同页面 tab，
     // 再把删除消息发给对应 content script，让页面自己拆掉 mark。
@@ -161,7 +168,10 @@ export const useHistoryOverview = () => {
     refresh,
     exportAnnotations,
     importAnnotations,
+    exportAnnotations,
+    importAnnotations,
     openOriginalPage,
+    openSettingsPage,
     openSettingsPage,
     removeAnnotation,
     getColorMeta
