@@ -36,9 +36,21 @@ class Settings(BaseSettings):
     platform_translation_enabled: bool = Field(default=True, alias="PLATFORM_TRANSLATION_ENABLED")
     platform_youdao_app_key: str = Field(default="", alias="PLATFORM_YOUDAO_APP_KEY")
     platform_youdao_app_secret: str = Field(default="", alias="PLATFORM_YOUDAO_APP_SECRET")
+    provider_credential_encryption_key: str = Field(default="", alias="PROVIDER_CREDENTIAL_ENCRYPTION_KEY")
     platform_requests_per_minute: int = Field(default=30, alias="PLATFORM_REQUESTS_PER_MINUTE")
     platform_daily_limit: int = Field(default=5000, alias="PLATFORM_DAILY_LIMIT")
     cors_origins_raw: str = Field(default="", alias="CORS_ORIGINS")
+    auth_access_token_ttl_minutes: int = Field(default=60, alias="AUTH_ACCESS_TOKEN_TTL_MINUTES")
+    auth_refresh_token_ttl_days: int = Field(default=30, alias="AUTH_REFRESH_TOKEN_TTL_DAYS")
+    smtp_host: str = Field(default="", alias="SMTP_HOST")
+    smtp_port: int = Field(default=587, alias="SMTP_PORT")
+    smtp_user: str = Field(default="", alias="SMTP_USER")
+    smtp_password: str = Field(default="", alias="SMTP_PASSWORD")
+    smtp_use_tls: bool = Field(default=True, alias="SMTP_USE_TLS")
+    smtp_from_name: str = Field(default="明彩", alias="SMTP_FROM_NAME")
+    auth_email_verification_token_ttl_hours: int = Field(default=24, alias="AUTH_EMAIL_VERIFICATION_TOKEN_TTL_HOURS")
+    auth_email_verification_resend_cooldown_seconds: int = Field(default=300, alias="AUTH_EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS")
+    auth_email_verification_success_path: str = Field(default="/verify-email/success", alias="AUTH_EMAIL_VERIFICATION_SUCCESS_PATH")
 
     @property
     def sqlalchemy_database_uri(self) -> str:
@@ -54,6 +66,19 @@ class Settings(BaseSettings):
     @property
     def trusted_proxies(self) -> list[str]:
         return [proxy.strip() for proxy in self.trusted_proxies_raw.split(",") if proxy.strip()]
+
+    @property
+    def smtp_enabled(self) -> bool:
+        return bool(self.smtp_host and self.smtp_user and self.smtp_password)
+
+    @property
+    def email_verification_success_url(self) -> str:
+        base_url = self.server_public_base_url.rstrip("/")
+        path = self.auth_email_verification_success_path.strip()
+        if not base_url or not path:
+            return ""
+
+        return f"{base_url}/{path.lstrip('/')}"
 
 
 @lru_cache(maxsize=1)

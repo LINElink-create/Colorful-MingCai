@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ANNOTATION_COLORS } from '../../../src/shared/constants/annotationColors'
+import { ANNOTATION_COLORS } from '../../../src/shared/constants/annotationColors'
 import type { AnnotationRecord } from '../../../src/shared/types/annotation'
+
+const colorMetaMap = Object.fromEntries(ANNOTATION_COLORS.map((item) => [item.value, item]))
 
 const colorMetaMap = Object.fromEntries(ANNOTATION_COLORS.map((item) => [item.value, item]))
 
@@ -10,8 +13,11 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{
+  jump: [annotation: AnnotationRecord]
   remove: [annotationId: string]
 }>()
+
+const getColorMeta = (color: AnnotationRecord['color']) => colorMetaMap[color]
 
 const getColorMeta = (color: AnnotationRecord['color']) => colorMetaMap[color]
 </script>
@@ -20,34 +26,36 @@ const getColorMeta = (color: AnnotationRecord['color']) => colorMetaMap[color]
   说明：
   - 只负责展示传入的注释列表与加载/空状态占位
   - 不执行任何数据加载或变更操作，交由父组件控制
-  - 当前版本点击 × 只发出“请求删除”事件，确认与真正删除逻辑仍由父组件处理
+  - 当前版本点击卡片发出“跳转定位”事件，点击 × 发出“请求删除”事件
 -->
 
 <template>
   <section class="list-card">
     <div class="list-header">
       <div>
-        <p>当前页摘录</p>
-        <h3>把页面里的重点句子收进这里</h3>
+        <p>当前页高亮</p>
+        <h3>把页面里的重点句子和附加笔记收进这里</h3>
       </div>
     </div>
 
     <p v-if="isLoading" class="empty-state">正在加载标注...</p>
-    <p v-else-if="annotations.length === 0" class="empty-state">暂无标注。请在页面中先选中文本，再使用右键菜单高亮。</p>
+    <p v-else-if="annotations.length === 0" class="empty-state">暂无高亮。请先在页面中选中文本进行高亮，或为高亮添加笔记。</p>
 
     <ul v-else class="annotation-list">
       <li v-for="annotation in annotations" :key="annotation.id">
-        <button class="remove-button" type="button" aria-label="删除当前高亮" @click="emit('remove', annotation.id)">
+        <button class="annotation-card" type="button" @click="emit('jump', annotation)">
+          <div class="annotation-topline">
+            <span class="color-chip" :style="{ backgroundColor: getColorMeta(annotation.color).swatch }">
+              {{ getColorMeta(annotation.color).label }}
+            </span>
+            <p class="meta">{{ new Date(annotation.createdAt).toLocaleString() }}</p>
+          </div>
+          <p class="quote">{{ annotation.textQuote }}</p>
+          <p v-if="annotation.note" class="note">{{ annotation.note }}</p>
+        </button>
+        <button class="remove-button" type="button" aria-label="删除当前高亮" @click.stop="emit('remove', annotation.id)">
           ×
         </button>
-        <div class="annotation-topline">
-          <span class="color-chip" :style="{ backgroundColor: getColorMeta(annotation.color).swatch }">
-            {{ getColorMeta(annotation.color).label }}
-          </span>
-          <p class="meta">{{ new Date(annotation.createdAt).toLocaleString() }}</p>
-        </div>
-        <p class="quote">{{ annotation.textQuote }}</p>
-        <p v-if="annotation.note" class="note">{{ annotation.note }}</p>
       </li>
     </ul>
   </section>
@@ -56,6 +64,9 @@ const getColorMeta = (color: AnnotationRecord['color']) => colorMetaMap[color]
 <style scoped>
 .list-card {
   padding: 14px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
@@ -82,8 +93,23 @@ const getColorMeta = (color: AnnotationRecord['color']) => colorMetaMap[color]
   text-transform: uppercase;
 }
 
+.list-header h3 {
+  margin: 4px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.list-header p {
+  color: var(--mc-accent, #6366f1);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .annotation-list {
   display: grid;
+  gap: 8px;
   gap: 8px;
   list-style: none;
   padding: 0;
@@ -92,15 +118,28 @@ const getColorMeta = (color: AnnotationRecord['color']) => colorMetaMap[color]
 
 .annotation-list li {
   position: relative;
-  padding: 12px;
   border-radius: 8px;
+}
+
+.annotation-card {
+  width: 100%;
+  padding: 12px;
+  border: 0;
   border-left: 3px solid transparent;
+  border-radius: 8px;
   background: #f8f9fb;
+  text-align: left;
+  cursor: pointer;
   transition: background 120ms ease;
 }
 
-.annotation-list li:hover {
+.annotation-card:hover {
   background: #f1f5f9;
+}
+
+.annotation-card:focus-visible {
+  outline: 2px solid var(--mc-accent, #6366f1);
+  outline-offset: 2px;
 }
 
 .annotation-topline {
@@ -125,28 +164,49 @@ const getColorMeta = (color: AnnotationRecord['color']) => colorMetaMap[color]
   position: absolute;
   top: 10px;
   right: 10px;
+  z-index: 1;
   width: 22px;
   height: 22px;
   border: 0;
   border-radius: 6px;
   background: transparent;
   color: var(--mc-muted, #94a3b8);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--mc-muted, #94a3b8);
   cursor: pointer;
   font-size: 14px;
+  font-size: 14px;
   line-height: 1;
+  transition: background 120ms ease, color 120ms ease;
   transition: background 120ms ease, color 120ms ease;
 }
 
 .remove-button:hover {
   background: var(--mc-danger-bg, #fef2f2);
   color: var(--mc-danger-text, #dc2626);
+  background: var(--mc-danger-bg, #fef2f2);
+  color: var(--mc-danger-text, #dc2626);
 }
 
 .quote {
   margin-top: 8px;
+  margin-top: 8px;
   font-size: 13px;
   font-weight: 500;
+  font-weight: 500;
   line-height: 1.6;
+  color: var(--mc-ink, #1a1a2e);
+}
+
+.note {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--mc-muted-strong, #475569);
+  font-size: 12px;
+  line-height: 1.5;
   color: var(--mc-ink, #1a1a2e);
 }
 
@@ -164,11 +224,15 @@ const getColorMeta = (color: AnnotationRecord['color']) => colorMetaMap[color]
 .meta {
   font-size: 11px;
   color: var(--mc-muted, #94a3b8);
+  font-size: 11px;
+  color: var(--mc-muted, #94a3b8);
 }
 
 .empty-state {
   color: var(--mc-muted, #64748b);
+  color: var(--mc-muted, #64748b);
   font-size: 13px;
+  line-height: 1.6;
   line-height: 1.6;
 }
 </style>

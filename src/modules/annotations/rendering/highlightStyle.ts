@@ -11,6 +11,20 @@ export const ensureHighlightStyle = () => {
   const style = document.createElement('style')
   style.id = STYLE_ID
   style.textContent = `
+    @keyframes mingcai-jump-pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(26, 115, 232, 0.38);
+      }
+
+      70% {
+        box-shadow: 0 0 0 10px rgba(26, 115, 232, 0);
+      }
+
+      100% {
+        box-shadow: 0 0 0 0 rgba(26, 115, 232, 0);
+      }
+    }
+
     mark[data-mingcai-annotation="true"] {
       color: inherit;
       border-radius: 0.2em;
@@ -56,6 +70,13 @@ export const ensureHighlightStyle = () => {
       outline-offset: 2px;
       box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.35), 0 2px 6px rgba(91, 67, 0, 0.18);
     }
+
+    mark[data-mingcai-jump-target="true"] {
+      animation: mingcai-jump-pulse 0.9s ease-out 2;
+      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.35);
+      scroll-margin-block: 96px;
+    }
+
     mark[data-mingcai-color="yellow"] {
       background: #ffe37a;
     }

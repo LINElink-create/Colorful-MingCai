@@ -3,7 +3,10 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { removeAnnotationsByIds, listPageBuckets } from '../../modules/annotations/repository/annotationRepository'
 import { EXPORT_FORMATS, type ExportFormat } from '../../shared/constants/exportFormats'
 import { findTabIdsByPageUrl, openExtensionPage, openTab } from '../../modules/browser/tabs'
+import { EXPORT_FORMATS, type ExportFormat } from '../../shared/constants/exportFormats'
+import { findTabIdsByPageUrl, openExtensionPage, openTab } from '../../modules/browser/tabs'
 import { sendMessageToTab } from '../../modules/messaging/sendToActiveTab'
+import { sendMessageToBackground } from '../../modules/messaging/sendToBackground'
 import { sendMessageToBackground } from '../../modules/messaging/sendToBackground'
 import { MESSAGE_TYPES } from '../../shared/constants/messageTypes'
 import { STORAGE_KEYS } from '../../shared/constants/storageKeys'
@@ -37,6 +40,12 @@ export const useHistoryOverview = () => {
 
   const totalAnnotations = computed(() => {
     return buckets.value.reduce((total, bucket) => total + bucket.annotations.length, 0)
+  })
+
+  const totalNotes = computed(() => {
+    return buckets.value.reduce((total, bucket) => {
+      return total + bucket.annotations.filter((annotation) => annotation.note?.trim()).length
+    }, 0)
   })
 
   const exportAnnotations = async (format: ExportFormat) => {
@@ -89,6 +98,10 @@ export const useHistoryOverview = () => {
     await openExtensionPage('/settings.html')
   }
 
+  const openSettingsPage = async () => {
+    await openExtensionPage('/settings.html')
+  }
+
   const syncRemoveFromOpenTabs = async (url: string, annotationId: string) => {
     // 历史页自身不能碰网页 DOM，只能先找出已打开的同页面 tab，
     // 再把删除消息发给对应 content script，让页面自己拆掉 mark。
@@ -118,7 +131,7 @@ export const useHistoryOverview = () => {
       await syncRemoveFromOpenTabs(bucket.url, annotation.id)
       await refresh()
     } catch (error) {
-      errorMessage.value = error instanceof Error ? error.message : '删除历史标记失败'
+      errorMessage.value = error instanceof Error ? error.message : '删除历史高亮失败'
     } finally {
       isLoading.value = false
     }
@@ -151,10 +164,14 @@ export const useHistoryOverview = () => {
     errorMessage,
     buckets,
     totalAnnotations,
+    totalNotes,
     refresh,
     exportAnnotations,
     importAnnotations,
+    exportAnnotations,
+    importAnnotations,
     openOriginalPage,
+    openSettingsPage,
     openSettingsPage,
     removeAnnotation,
     getColorMeta

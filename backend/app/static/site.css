@@ -116,9 +116,10 @@ a {
 .eyebrow {
   margin: 0;
   color: var(--mc-accent);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-size: clamp(24px, 2.8vw, 32px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
   text-transform: uppercase;
 }
 
@@ -328,6 +329,7 @@ a {
 
 .footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
@@ -352,6 +354,27 @@ a {
 .footer-meta span {
   margin-top: 0;
   font-size: 12px;
+}
+
+.footer-meta a {
+  color: var(--mc-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.footer-beian {
+  width: 100%;
+  padding-top: 12px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  text-align: center;
+}
+
+.footer-beian a {
+  color: var(--mc-muted-strong);
+  font-size: 12px;
+  line-height: 1.7;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 @media (max-width: 960px) {

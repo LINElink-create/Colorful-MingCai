@@ -2,8 +2,10 @@ import browser from 'webextension-polyfill'
 import { STORAGE_KEYS } from '../../shared/constants/storageKeys'
 import { DEFAULT_BACKEND_CONFIG, type BackendConfig } from '../../shared/types/translation'
 
+const LOCKED_BACKEND_BASE_URL = DEFAULT_BACKEND_CONFIG.baseUrl
+
 const sanitizeBackendConfig = (config: Partial<BackendConfig>): BackendConfig => ({
-  baseUrl: config.baseUrl?.trim() || DEFAULT_BACKEND_CONFIG.baseUrl,
+  baseUrl: LOCKED_BACKEND_BASE_URL,
   authState: config.authState ?? DEFAULT_BACKEND_CONFIG.authState,
   accessToken: config.accessToken?.trim() ?? '',
   refreshToken: config.refreshToken?.trim() ?? ''

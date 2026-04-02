@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Optional
+
 from datetime import datetime, timezone
 from hashlib import sha256
 from uuid import uuid4
@@ -16,10 +18,10 @@ class TranslationRequestRepository:
     def create_request_log(
         self,
         *,
-        user_id: int | None,
+        user_id: Optional[int],
         actor_type: str,
         provider: str,
-        provider_config_id: int | None,
+        provider_config_id: Optional[int],
         source_language: str,
         target_language: str,
         text: str,

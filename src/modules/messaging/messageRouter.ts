@@ -7,10 +7,25 @@ import { removeRenderedAnnotation } from '../annotations/rendering/highlightRend
 import { normalizeRange } from '../annotations/rendering/rangeNormalizer'
 import { clearPageAnnotations, exportAnnotationBundle, getPageBucket, removeAnnotationsByIds, saveAnnotation } from '../annotations/repository/annotationRepository'
 import { downloadTextFile } from '../browser/downloads'
+import {
+  confirmCloudUpload,
+  loginCloudAccount,
+  loadCloudAccount,
+  logoutCloudAccount,
+  previewCloudUpload,
+  pullCloudState,
+  registerCloudAccount,
+  syncCloudState,
+} from '../cloud/cloudAccountService'
 import { EXPORT_FORMATS } from '../../shared/constants/exportFormats'
 import { MESSAGE_TYPES } from '../../shared/constants/messageTypes'
 import { getBackendConfig, saveBackendConfig } from '../translation/backendConfigRepository'
-import { translateWithBackend, getTranslationProviderStatuses } from '../translation/backendClient'
+import {
+  deleteTranslationProviderConfig,
+  getTranslationProviderStatuses,
+  saveTranslationProviderConfig,
+  translateWithBackend,
+} from '../translation/backendClient'
 import { getTranslationPreferences, saveTranslationPreferences } from '../translation/preferencesRepository'
 import type { RuntimeMessage, RuntimeMessageResult } from '../../shared/types/message'
 import { getPageKey } from '../../shared/utils/pageKey'
@@ -81,6 +96,7 @@ const handleCreateAnnotationFromSelection = async (message: RuntimeMessage) => {
   restoreAnnotation(annotation)
   // 将 annotation 持久化到仓库并返回所在的 bucket
   const bucket = await saveAnnotation(annotation)
+
   // 清除用户选区，恢复页面到无选中状态
   selection?.removeAllRanges()
   // 返回成功结果，包含更新后的 bucket
@@ -116,6 +132,35 @@ const handleRemoveAnnotationById = async (message: RuntimeMessage) => {
   return createOk({ bucket, removedCount: 1 })
 }
 
+const handleNavigateToAnnotation = async (message: RuntimeMessage) => {
+  if (message.type !== MESSAGE_TYPES.NAVIGATE_TO_ANNOTATION) {
+    return createError('Unsupported message')
+  }
+
+  const target = Array.from(document.querySelectorAll('mark[data-mingcai-id]')).find((element) => {
+    return element.getAttribute('data-mingcai-id') === message.payload.annotationId
+  })
+
+  if (!(target instanceof HTMLElement)) {
+    return createError('当前页面未找到这条高亮')
+  }
+
+  document.querySelectorAll('mark[data-mingcai-jump-target="true"]').forEach((element) => {
+    element.removeAttribute('data-mingcai-jump-target')
+  })
+
+  target.setAttribute('data-mingcai-jump-target', 'true')
+  target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
+
+  window.setTimeout(() => {
+    if (target.isConnected) {
+      target.removeAttribute('data-mingcai-jump-target')
+    }
+  }, 1800)
+
+  return createOk(undefined)
+}
+
 export const routeRuntimeMessage = async (message: RuntimeMessage, context: RouterContext = {}) => {
   try {
     // 当消息来自 content script 时，运行在页面上下文中，可直接操作 DOM
@@ -131,6 +176,10 @@ export const routeRuntimeMessage = async (message: RuntimeMessage, context: Rout
 
       if (message.type === MESSAGE_TYPES.REMOVE_ANNOTATIONS_FROM_SELECTION) {
         return await handleRemoveAnnotationsFromSelection(message)
+      }
+
+      if (message.type === MESSAGE_TYPES.NAVIGATE_TO_ANNOTATION) {
+        return await handleNavigateToAnnotation(message)
       }
 
       if (message.type === MESSAGE_TYPES.RESTORE_PAGE_ANNOTATIONS) {
@@ -204,6 +253,38 @@ export const routeRuntimeMessage = async (message: RuntimeMessage, context: Rout
         const config = await getBackendConfig()
         return createOk({ config })
       }
+      case MESSAGE_TYPES.REGISTER_BACKEND_ACCOUNT: {
+        const result = await registerCloudAccount(message.payload)
+        return createOk({ account: result.account, config: result.config })
+      }
+      case MESSAGE_TYPES.LOGIN_BACKEND_ACCOUNT: {
+        const result = await loginCloudAccount(message.payload)
+        return createOk({ account: result.account, config: result.config })
+      }
+      case MESSAGE_TYPES.LOGOUT_BACKEND_ACCOUNT: {
+        await logoutCloudAccount()
+        return createOk(undefined)
+      }
+      case MESSAGE_TYPES.GET_BACKEND_ACCOUNT: {
+        const account = await loadCloudAccount()
+        return createOk({ account })
+      }
+      case MESSAGE_TYPES.PULL_CLOUD_STATE: {
+        const result = await pullCloudState()
+        return createOk(result)
+      }
+      case MESSAGE_TYPES.PREVIEW_CLOUD_UPLOAD: {
+        const result = await previewCloudUpload()
+        return createOk(result)
+      }
+      case MESSAGE_TYPES.CONFIRM_CLOUD_UPLOAD: {
+        const result = await confirmCloudUpload()
+        return createOk(result)
+      }
+      case MESSAGE_TYPES.SYNC_WITH_CLOUD: {
+        const result = await syncCloudState()
+        return createOk(result)
+      }
       case MESSAGE_TYPES.SAVE_BACKEND_CONFIG: {
         const config = await saveBackendConfig(message.payload)
         return createOk({ config })
@@ -211,6 +292,16 @@ export const routeRuntimeMessage = async (message: RuntimeMessage, context: Rout
       case MESSAGE_TYPES.GET_TRANSLATION_PROVIDER_STATUS: {
         const config = await getBackendConfig()
         const providers = await getTranslationProviderStatuses(config)
+        return createOk({ providers })
+      }
+      case MESSAGE_TYPES.SAVE_TRANSLATION_PROVIDER_CONFIG: {
+        const config = await getBackendConfig()
+        const providers = await saveTranslationProviderConfig(config, message.payload)
+        return createOk({ providers })
+      }
+      case MESSAGE_TYPES.DELETE_TRANSLATION_PROVIDER_CONFIG: {
+        const config = await getBackendConfig()
+        const providers = await deleteTranslationProviderConfig(config, message.payload.provider)
         return createOk({ providers })
       }
       default: {

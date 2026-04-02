@@ -51,6 +51,7 @@ export const renderAnnotationRange = (range: Range, annotationId: string, color 
   }
 
   const mark = document.createElement('mark')
+
   mark.dataset.mingcaiAnnotation = 'true'
   mark.dataset.mingcaiId = annotationId
   mark.dataset.mingcaiColor = color

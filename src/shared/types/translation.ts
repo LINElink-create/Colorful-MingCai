@@ -1,10 +1,31 @@
 export type TranslationLanguageCode = 'auto' | 'zh-CHS' | 'en' | 'ja' | 'ko' | 'fr' | 'de' | 'es' | 'ru'
 
-export type TranslationProvider = 'youdao'
+export type TranslationProvider = 'youdao' | 'openai_compatible'
 
 export type BackendAuthState = 'anonymous' | 'authenticated'
 
 export type TranslationProviderBindingMode = 'managed' | 'byo_key'
+
+export type TranslationProviderConfigSummary = {
+  credentialHint?: string
+  endpointUrl?: string
+  model?: string
+}
+
+export type YoudaoProviderConfigInput = {
+  provider: 'youdao'
+  appKey: string
+  appSecret: string
+}
+
+export type OpenAICompatibleProviderConfigInput = {
+  provider: 'openai_compatible'
+  baseUrl: string
+  apiKey: string
+  model: string
+}
+
+export type TranslationProviderConfigInput = YoudaoProviderConfigInput | OpenAICompatibleProviderConfigInput
 
 export type TranslationPreferences = {
   defaultProvider: TranslationProvider
@@ -27,6 +48,7 @@ export type TranslationProviderStatus = {
   configMode: TranslationProviderBindingMode | null
   status: 'available' | 'unavailable' | 'not_configured'
   lastErrorCode?: string
+  configSummary?: TranslationProviderConfigSummary | null
 }
 
 export type TranslationResult = {
@@ -34,7 +56,7 @@ export type TranslationResult = {
   translation: string
   detectedSourceLanguage: string
   targetLanguage: string
-  provider: 'youdao'
+  provider: TranslationProvider
 }
 
 export const DEFAULT_TRANSLATION_PREFERENCES: TranslationPreferences = {
@@ -45,7 +67,7 @@ export const DEFAULT_TRANSLATION_PREFERENCES: TranslationPreferences = {
 }
 
 export const DEFAULT_BACKEND_CONFIG: BackendConfig = {
-  baseUrl: 'http://127.0.0.1:8000',
+  baseUrl: 'https://www.mingcai-colorful.top',
   authState: 'anonymous',
   accessToken: '',
   refreshToken: ''

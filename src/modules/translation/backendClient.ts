@@ -1,9 +1,15 @@
+import type { ExportBundle } from '../../shared/types/annotation'
+import type { BackendAccount, BackendAuthSession } from '../../shared/types/auth'
+import type { TranslationPreferencesSnapshot } from '../../shared/types/sync'
 import {
   type BackendConfig,
+  type TranslationProvider,
+  type TranslationProviderConfigInput,
   type TranslationPreferences,
   type TranslationProviderStatus,
   type TranslationResult
 } from '../../shared/types/translation'
+import { saveBackendConfig } from './backendConfigRepository'
 
 const parseErrorMessage = async (response: Response, fallbackMessage: string) => {
   try {
@@ -15,6 +21,16 @@ const parseErrorMessage = async (response: Response, fallbackMessage: string) =>
   }
 }
 
+export class BackendRequestError extends Error {
+  status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'BackendRequestError'
+    this.status = status
+  }
+}
+
 export type BackendTranslatePayload = {
   text: string
   preferences: Pick<TranslationPreferences, 'sourceLanguage' | 'targetLanguage' | 'defaultProvider'>
@@ -23,12 +39,12 @@ export type BackendTranslatePayload = {
   extensionVersion?: string
 }
 
-const buildHeaders = (config: BackendConfig) => {
+const buildHeaders = (config: BackendConfig, includeAuth = true) => {
   const headers: HeadersInit = {
     'Content-Type': 'application/json'
   }
 
-  if (config.accessToken) {
+  if (includeAuth && config.accessToken) {
     headers.Authorization = `Bearer ${config.accessToken}`
   }
 
@@ -44,74 +60,274 @@ const ensureBaseUrl = (config: BackendConfig) => {
   return baseUrl
 }
 
+const requestJson = async <TData>(
+  path: string,
+  config: BackendConfig,
+  options: {
+    method?: string
+    body?: unknown
+    includeAuth?: boolean
+    fallbackMessage: string
+  }
+): Promise<TData> => {
+  const response = await fetch(`${ensureBaseUrl(config)}${path}`, {
+    method: options.method ?? 'GET',
+    headers: buildHeaders(config, options.includeAuth ?? true),
+    body: options.body === undefined ? undefined : JSON.stringify(options.body)
+  })
+
+  if (!response.ok) {
+    throw new BackendRequestError(
+      await parseErrorMessage(response, `${options.fallbackMessage}（${response.status}）`),
+      response.status
+    )
+  }
+
+  if (response.status === 204) {
+    return undefined as TData
+  }
+
+  return (await response.json()) as TData
+}
+
+const pickValue = <TValue>(data: Record<string, unknown>, camelKey: string, snakeKey: string) => {
+  return (data[camelKey] ?? data[snakeKey]) as TValue
+}
+
+const parseProviderStatus = (provider: Record<string, unknown>): TranslationProviderStatus => {
+  const summary = pickValue<Record<string, unknown> | null | undefined>(provider, 'configSummary', 'config_summary')
+
+  return {
+    provider: pickValue<TranslationProvider>(provider, 'provider', 'provider'),
+    platformAvailable: pickValue<boolean>(provider, 'platformAvailable', 'platform_available'),
+    userConfigured: pickValue<boolean>(provider, 'userConfigured', 'user_configured'),
+    configMode: pickValue<'managed' | 'byo_key' | null>(provider, 'configMode', 'config_mode'),
+    status: pickValue<'available' | 'unavailable' | 'not_configured'>(provider, 'status', 'status'),
+    lastErrorCode: pickValue<string | null | undefined>(provider, 'lastErrorCode', 'last_error_code') ?? undefined,
+    configSummary: summary
+      ? {
+          credentialHint: pickValue<string | null | undefined>(summary, 'credentialHint', 'credential_hint') ?? undefined,
+          endpointUrl: pickValue<string | null | undefined>(summary, 'endpointUrl', 'endpoint_url') ?? undefined,
+          model: pickValue<string | null | undefined>(summary, 'model', 'model') ?? undefined,
+        }
+      : null,
+  }
+}
+
 export const translateWithBackend = async (
   payload: BackendTranslatePayload,
   config: BackendConfig
 ): Promise<TranslationResult> => {
-  const response = await fetch(`${ensureBaseUrl(config)}/v1/translation/translate`, {
-    method: 'POST',
-    headers: buildHeaders(config),
-    body: JSON.stringify({
-      text: payload.text,
-      source_language: payload.preferences.sourceLanguage,
-      target_language: payload.preferences.targetLanguage,
-      provider_hint: payload.preferences.defaultProvider,
-      client_context: {
-        extension_version: payload.extensionVersion,
-        page_url: payload.pageUrl,
-        page_title: payload.pageTitle
+  const result = await withBackendRefresh(config, saveBackendConfig, async (activeConfig) => {
+    return requestJson<Record<string, unknown>>('/v1/translation/translate', activeConfig, {
+      method: 'POST',
+      fallbackMessage: '后端翻译请求失败',
+      body: {
+        text: payload.text,
+        source_language: payload.preferences.sourceLanguage,
+        target_language: payload.preferences.targetLanguage,
+        provider_hint: payload.preferences.defaultProvider,
+        client_context: {
+          extension_version: payload.extensionVersion,
+          page_url: payload.pageUrl,
+          page_title: payload.pageTitle
+        }
       }
     })
   })
 
-  if (!response.ok) {
-    throw new Error(await parseErrorMessage(response, `后端翻译请求失败（${response.status}）`))
-  }
-
-  const data = (await response.json()) as {
-    translated_text: string
-    detected_source_language: string
-    target_language: string
-    provider: 'youdao'
-  }
+  const data = result.data
 
   return {
     query: payload.text.trim(),
-    translation: data.translated_text,
-    detectedSourceLanguage: data.detected_source_language,
-    targetLanguage: data.target_language,
-    provider: data.provider
+    translation: pickValue<string>(data, 'translatedText', 'translated_text'),
+    detectedSourceLanguage: pickValue<string>(data, 'detectedSourceLanguage', 'detected_source_language'),
+    targetLanguage: pickValue<string>(data, 'targetLanguage', 'target_language'),
+    provider: pickValue<TranslationProvider>(data, 'provider', 'provider')
   }
 }
 
 export const getTranslationProviderStatuses = async (
   config: BackendConfig
 ): Promise<TranslationProviderStatus[]> => {
-  const response = await fetch(`${ensureBaseUrl(config)}/v1/account/providers`, {
-    headers: buildHeaders(config)
+  const result = await withBackendRefresh(config, saveBackendConfig, async (activeConfig) => {
+    return requestJson<{
+      providers: Array<Record<string, unknown>>
+    }>('/v1/account/providers', activeConfig, {
+      fallbackMessage: '获取翻译服务状态失败'
+    })
   })
 
-  if (!response.ok) {
-    throw new Error(await parseErrorMessage(response, `获取翻译服务状态失败（${response.status}）`))
-  }
+  return result.data.providers.map(parseProviderStatus)
+}
 
-  const data = (await response.json()) as {
-    providers: Array<{
-      provider: 'youdao'
-      platform_available: boolean
-      user_configured: boolean
-      config_mode: 'managed' | 'byo_key' | null
-      status: 'available' | 'unavailable' | 'not_configured'
-      last_error_code?: string | null
-    }>
-  }
+export const saveTranslationProviderConfig = async (
+  config: BackendConfig,
+  payload: TranslationProviderConfigInput
+): Promise<TranslationProviderStatus[]> => {
+  const path = `/v1/translation/provider-configs/${payload.provider}`
+  const body = payload.provider === 'youdao'
+    ? {
+        youdaoAppKey: payload.appKey,
+        youdaoAppSecret: payload.appSecret,
+      }
+    : {
+        openaiBaseUrl: payload.baseUrl,
+        openaiApiKey: payload.apiKey,
+        openaiModel: payload.model,
+      }
 
-  return data.providers.map((provider) => ({
-    provider: provider.provider,
-    platformAvailable: provider.platform_available,
-    userConfigured: provider.user_configured,
-    configMode: provider.config_mode,
-    status: provider.status,
-    lastErrorCode: provider.last_error_code ?? undefined
-  }))
+  const result = await withBackendRefresh(config, saveBackendConfig, async (activeConfig) => {
+    return requestJson<Array<Record<string, unknown>>>(path, activeConfig, {
+      method: 'PUT',
+      fallbackMessage: '保存翻译服务商配置失败',
+      body,
+    })
+  })
+
+  return result.data.map(parseProviderStatus)
+}
+
+export const deleteTranslationProviderConfig = async (
+  config: BackendConfig,
+  provider: TranslationProvider
+): Promise<TranslationProviderStatus[]> => {
+  const result = await withBackendRefresh(config, saveBackendConfig, async (activeConfig) => {
+    return requestJson<Array<Record<string, unknown>>>(`/v1/translation/provider-configs/${provider}`, activeConfig, {
+      method: 'DELETE',
+      fallbackMessage: '删除翻译服务商配置失败',
+    })
+  })
+
+  return result.data.map(parseProviderStatus)
+}
+
+export const registerBackendAccount = async (
+  config: BackendConfig,
+  payload: { email: string; password: string; displayName?: string }
+) => {
+  return requestJson<BackendAuthSession>('/v1/auth/register', config, {
+    method: 'POST',
+    includeAuth: false,
+    fallbackMessage: '注册失败',
+    body: payload
+  })
+}
+
+export const loginBackendAccount = async (
+  config: BackendConfig,
+  payload: { email: string; password: string }
+) => {
+  return requestJson<BackendAuthSession>('/v1/auth/login', config, {
+    method: 'POST',
+    includeAuth: false,
+    fallbackMessage: '登录失败',
+    body: payload
+  })
+}
+
+export const refreshBackendSession = async (config: BackendConfig, refreshToken = config.refreshToken) => {
+  return requestJson<BackendAuthSession>('/v1/auth/refresh', config, {
+    method: 'POST',
+    includeAuth: false,
+    fallbackMessage: '刷新登录状态失败',
+    body: { refreshToken }
+  })
+}
+
+export const logoutBackendAccount = async (config: BackendConfig) => {
+  return requestJson<{ message: string }>('/v1/auth/logout', config, {
+    method: 'POST',
+    fallbackMessage: '退出登录失败',
+    body: {}
+  })
+}
+
+export const getCurrentBackendAccount = async (config: BackendConfig) => {
+  return requestJson<BackendAccount>('/v1/auth/me', config, {
+    fallbackMessage: '获取当前账号失败'
+  })
+}
+
+export const getCloudAnnotationBundle = async (config: BackendConfig) => {
+  return requestJson<ExportBundle>('/v1/annotations/documents', config, {
+    fallbackMessage: '获取云端高亮失败'
+  })
+}
+
+export const replaceCloudAnnotationBundle = async (config: BackendConfig, bundle: ExportBundle) => {
+  return requestJson<ExportBundle & { savedCount: number }>('/v1/annotations/documents/bulk', config, {
+    method: 'PUT',
+    fallbackMessage: '保存云端高亮失败',
+    body: bundle
+  })
+}
+
+export const getCloudTranslationPreferences = async (config: BackendConfig) => {
+  const data = await requestJson<Record<string, unknown>>('/v1/translation/preferences', config, {
+    fallbackMessage: '获取云端翻译偏好失败'
+  })
+
+  return {
+    preferences: {
+      defaultProvider: pickValue<TranslationPreferences['defaultProvider']>(data, 'defaultProvider', 'default_provider'),
+      sourceLanguage: pickValue<TranslationPreferences['sourceLanguage']>(data, 'sourceLanguage', 'source_language'),
+      targetLanguage: pickValue<TranslationPreferences['targetLanguage']>(data, 'targetLanguage', 'target_language'),
+      autoTranslateEnabled: pickValue<boolean>(data, 'autoTranslateEnabled', 'auto_translate_enabled')
+    },
+    updatedAt: pickValue<string>(data, 'updatedAt', 'updated_at')
+  } satisfies TranslationPreferencesSnapshot
+}
+
+export const replaceCloudTranslationPreferences = async (
+  config: BackendConfig,
+  snapshot: TranslationPreferencesSnapshot
+) => {
+  const data = await requestJson<Record<string, unknown>>('/v1/translation/preferences', config, {
+    method: 'PUT',
+    fallbackMessage: '保存云端翻译偏好失败',
+    body: {
+      defaultProvider: snapshot.preferences.defaultProvider,
+      sourceLanguage: snapshot.preferences.sourceLanguage,
+      targetLanguage: snapshot.preferences.targetLanguage,
+      autoTranslateEnabled: snapshot.preferences.autoTranslateEnabled
+    }
+  })
+
+  return {
+    preferences: {
+      defaultProvider: pickValue<TranslationPreferences['defaultProvider']>(data, 'defaultProvider', 'default_provider'),
+      sourceLanguage: pickValue<TranslationPreferences['sourceLanguage']>(data, 'sourceLanguage', 'source_language'),
+      targetLanguage: pickValue<TranslationPreferences['targetLanguage']>(data, 'targetLanguage', 'target_language'),
+      autoTranslateEnabled: pickValue<boolean>(data, 'autoTranslateEnabled', 'auto_translate_enabled')
+    },
+    updatedAt: pickValue<string>(data, 'updatedAt', 'updated_at')
+  } satisfies TranslationPreferencesSnapshot
+}
+
+export const withBackendRefresh = async <TData>(
+  config: BackendConfig,
+  persistConfig: (config: BackendConfig) => Promise<unknown>,
+  task: (config: BackendConfig) => Promise<TData>
+) => {
+  try {
+    return { config, data: await task(config) }
+  } catch (error) {
+    if (!(error instanceof BackendRequestError) || error.status !== 401 || !config.refreshToken) {
+      throw error
+    }
+
+    const session = await refreshBackendSession(config)
+    const nextConfig: BackendConfig = {
+      ...config,
+      authState: 'authenticated',
+      accessToken: session.accessToken,
+      refreshToken: session.refreshToken
+    }
+    await persistConfig(nextConfig)
+    return {
+      config: nextConfig,
+      data: await task(nextConfig)
+    }
+  }
 }
