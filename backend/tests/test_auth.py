@@ -80,6 +80,15 @@ def test_register_route_returns_auth_session() -> None:
     assert response.json()["user"]["displayName"] == "测试用户"
 
 
+def test_register_route_requires_display_name() -> None:
+    response = client.post(
+        "/v1/auth/register",
+        json={"email": "user@example.com", "password": "password123"},
+    )
+
+    assert response.status_code == 422
+
+
 def test_login_route_returns_auth_session() -> None:
     response = client.post(
         "/v1/auth/login",

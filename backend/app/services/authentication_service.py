@@ -57,7 +57,7 @@ class AuthenticationService:
         if existing_identity is not None:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="该邮箱已注册")
 
-        display_name = (payload.display_name or email.split("@", 1)[0]).strip() or email.split("@", 1)[0]
+        display_name = payload.display_name
         now_iso = self.token_service.utcnow().isoformat()
         user = User(
             user_uuid=secrets.token_hex(16),

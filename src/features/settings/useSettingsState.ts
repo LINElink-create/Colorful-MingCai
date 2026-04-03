@@ -229,7 +229,7 @@ export const useSettingsState = (options?: { autoRefresh?: boolean; autoSync?: b
     }
   }
 
-  const registerAccount = async (payload: { email: string; password: string; displayName?: string }) => {
+  const registerAccount = async (payload: { email: string; password: string; displayName: string }) => {
     isSaving.value = true
     errorMessage.value = ''
 

@@ -83,7 +83,7 @@ const buildAuthenticatedConfig = (config: BackendConfig, accessToken: string, re
   refreshToken
 })
 
-export const registerCloudAccount = async (payload: { email: string; password: string; displayName?: string }) => {
+export const registerCloudAccount = async (payload: { email: string; password: string; displayName: string }) => {
   const currentConfig = await getBackendConfig()
   const session = await registerBackendAccount(currentConfig, payload)
   const nextConfig = buildAuthenticatedConfig(currentConfig, session.accessToken, session.refreshToken)

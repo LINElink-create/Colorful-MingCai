@@ -11,13 +11,96 @@ import {
 } from '../../shared/types/translation'
 import { saveBackendConfig } from './backendConfigRepository'
 
-const parseErrorMessage = async (response: Response, fallbackMessage: string) => {
+type ValidationIssue = {
+  loc?: Array<string | number>
+  msg?: string
+}
+
+const mapValidationIssueMessage = (issue: ValidationIssue) => {
+  const field = String(issue.loc?.[issue.loc.length - 1] ?? '')
+  const message = String(issue.msg ?? '')
+
+  if (field === 'email') {
+    return message.includes('Field required') ? '请填写邮箱' : '请输入正确的邮箱地址'
+  }
+
+  if (field === 'password') {
+    if (message.includes('Field required')) {
+      return '请填写密码'
+    }
+
+    if (message.includes('at least') || message.includes('at least 8')) {
+      return '密码至少 8 位'
+    }
+
+    return '密码格式无效'
+  }
+
+  if (field === 'displayName' || field === 'display_name') {
+    return message.includes('Field required') ? '请填写用户名' : '用户名格式无效'
+  }
+
+  if (message.includes('Field required')) {
+    return '请完整填写必填信息'
+  }
+
+  return ''
+}
+
+const mapKnownBackendMessage = (message: string, status: number, path: string) => {
+  if (path === '/v1/auth/register') {
+    if (message.includes('该邮箱已注册')) {
+      return '该邮箱已注册'
+    }
+
+    if (message.includes('邮箱格式无效')) {
+      return '请输入正确的邮箱地址'
+    }
+  }
+
+  if (path === '/v1/auth/login' && message.includes('邮箱或密码错误')) {
+    return '邮箱或密码错误'
+  }
+
+  if (status >= 500) {
+    return '服务暂时不可用，请稍后再试'
+  }
+
+  return message
+}
+
+const parseErrorDetail = (detail: unknown, status: number, path: string, fallbackMessage: string) => {
+  if (typeof detail === 'string') {
+    return mapKnownBackendMessage(detail, status, path) || fallbackMessage
+  }
+
+  if (Array.isArray(detail)) {
+    const issueMessage = detail
+      .map((issue) => mapValidationIssueMessage(issue as ValidationIssue))
+      .find((message) => Boolean(message))
+
+    return issueMessage || fallbackMessage
+  }
+
+  return fallbackMessage
+}
+
+const parseErrorMessage = async (response: Response, fallbackMessage: string, path: string) => {
   try {
-    const payload = (await response.json()) as { detail?: string }
-    return payload.detail || fallbackMessage
-  } catch {
     const rawText = await response.text()
-    return rawText || fallbackMessage
+
+    if (!rawText) {
+      return mapKnownBackendMessage(fallbackMessage, response.status, path)
+    }
+
+    try {
+      const payload = JSON.parse(rawText) as { detail?: unknown }
+      return parseErrorDetail(payload.detail, response.status, path, rawText || fallbackMessage)
+    } catch {
+      return mapKnownBackendMessage(rawText || fallbackMessage, response.status, path)
+    }
+  } catch {
+    return mapKnownBackendMessage(fallbackMessage, response.status, path)
   }
 }
 
@@ -78,7 +161,7 @@ const requestJson = async <TData>(
 
   if (!response.ok) {
     throw new BackendRequestError(
-      await parseErrorMessage(response, `${options.fallbackMessage}（${response.status}）`),
+      await parseErrorMessage(response, `${options.fallbackMessage}（${response.status}）`, path),
       response.status
     )
   }
@@ -204,7 +287,7 @@ export const deleteTranslationProviderConfig = async (
 
 export const registerBackendAccount = async (
   config: BackendConfig,
-  payload: { email: string; password: string; displayName?: string }
+  payload: { email: string; password: string; displayName: string }
 ) => {
   return requestJson<BackendAuthSession>('/v1/auth/register', config, {
     method: 'POST',

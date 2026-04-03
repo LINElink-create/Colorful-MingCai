@@ -13,16 +13,26 @@ const {
 
 const email = ref('')
 const password = ref('')
+const confirmPassword = ref('')
 const displayName = ref('')
 const successMessage = ref('')
+const localErrorMessage = ref('')
+
+const mergedErrorMessage = computed(() => localErrorMessage.value || errorMessage.value)
 
 const submitRegister = async () => {
   successMessage.value = ''
+  localErrorMessage.value = ''
+
+  if (password.value !== confirmPassword.value) {
+    localErrorMessage.value = '两次输入的密码不一致'
+    return
+  }
 
   await registerAccount({
     email: email.value,
     password: password.value,
-    displayName: displayName.value || undefined
+    displayName: displayName.value
   })
 
   if (!errorMessage.value) {
@@ -54,7 +64,7 @@ const pageTitle = computed(() => {
           : '创建账号后可同步高亮和笔记，不上传 API 配置。' }}
       </p>
 
-      <p v-if="errorMessage" class="error-message mc-error-message">{{ errorMessage }}</p>
+      <p v-if="mergedErrorMessage" class="error-message mc-error-message">{{ mergedErrorMessage }}</p>
       <p v-if="successMessage" class="success-message">{{ successMessage }}</p>
 
       <div v-if="currentAccount" class="account-panel">
@@ -79,8 +89,12 @@ const pageTitle = computed(() => {
           <input v-model="password" type="password" autocomplete="new-password" placeholder="至少 8 位密码" minlength="8" required>
         </label>
         <label class="field-block">
-          <span>显示名（可选）</span>
-          <input v-model="displayName" type="text" autocomplete="nickname" placeholder="明彩用户">
+          <span>确认密码</span>
+          <input v-model="confirmPassword" type="password" autocomplete="new-password" placeholder="再次输入密码" minlength="8" required>
+        </label>
+        <label class="field-block">
+          <span>用户名</span>
+          <input v-model="displayName" type="text" autocomplete="nickname" placeholder="明彩用户" required>
         </label>
         <div class="register-actions">
           <button class="primary-btn" type="submit" :disabled="isLoading || isSaving">
