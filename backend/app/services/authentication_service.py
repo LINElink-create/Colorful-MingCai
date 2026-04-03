@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import secrets
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import HTTPException, status
@@ -124,7 +125,7 @@ class AuthenticationService:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="刷新令牌无效")
 
         now = self.token_service.utcnow()
-        if session.refresh_expires_at < now:
+        if self._normalize_utc_datetime(session.refresh_expires_at) < now:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="刷新令牌已过期")
 
         user = self.db.get(User, session.user_id)
@@ -155,7 +156,7 @@ class AuthenticationService:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="登录状态已失效")
 
         now = self.token_service.utcnow()
-        if session.access_expires_at < now:
+        if self._normalize_utc_datetime(session.access_expires_at) < now:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="访问令牌已过期")
 
         user = self.db.get(User, session.user_id)
@@ -224,6 +225,13 @@ class AuthenticationService:
             refresh_expires_at=tokens.refresh_expires_at,
             last_seen_at=self.token_service.utcnow(),
         )
+
+    @staticmethod
+    def _normalize_utc_datetime(value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+
+        return value.astimezone(timezone.utc)
 
     @staticmethod
     def _normalize_email(email: str) -> str:

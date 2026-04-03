@@ -16,6 +16,11 @@ type ValidationIssue = {
   msg?: string
 }
 
+const withDiagnosticPath = (message: string, path: string, status?: number) => {
+  const statusText = typeof status === 'number' ? `，状态码：${status}` : ''
+  return `${message}（接口：${path}${statusText}）`
+}
+
 const mapValidationIssueMessage = (issue: ValidationIssue) => {
   const field = String(issue.loc?.[issue.loc.length - 1] ?? '')
   const message = String(issue.msg ?? '')
@@ -63,7 +68,7 @@ const mapKnownBackendMessage = (message: string, status: number, path: string) =
   }
 
   if (status >= 500) {
-    return '服务暂时不可用，请稍后再试'
+    return withDiagnosticPath('服务暂时不可用，请稍后再试', path, status)
   }
 
   return message
@@ -153,11 +158,17 @@ const requestJson = async <TData>(
     fallbackMessage: string
   }
 ): Promise<TData> => {
-  const response = await fetch(`${ensureBaseUrl(config)}${path}`, {
-    method: options.method ?? 'GET',
-    headers: buildHeaders(config, options.includeAuth ?? true),
-    body: options.body === undefined ? undefined : JSON.stringify(options.body)
-  })
+  let response: Response
+
+  try {
+    response = await fetch(`${ensureBaseUrl(config)}${path}`, {
+      method: options.method ?? 'GET',
+      headers: buildHeaders(config, options.includeAuth ?? true),
+      body: options.body === undefined ? undefined : JSON.stringify(options.body)
+    })
+  } catch {
+    throw new Error(withDiagnosticPath('无法连接服务，请检查网络或稍后再试', path))
+  }
 
   if (!response.ok) {
     throw new BackendRequestError(
