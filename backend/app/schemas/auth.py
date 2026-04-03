@@ -13,7 +13,7 @@ VerificationStatus = Literal["unverified", "pending", "verified"]
 class RegisterRequest(CamelModel):
     email: str = Field(min_length=3, max_length=255)
     password: str = Field(min_length=8, max_length=128)
-    display_name: Optional[str] = Field(default=None, max_length=128)
+    display_name: str = Field(max_length=128)
 
 
 class LoginRequest(CamelModel):

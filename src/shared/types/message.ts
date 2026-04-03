@@ -81,7 +81,7 @@ export type RuntimeMessage =
   | {
       // 注册后端账号
       type: 'REGISTER_BACKEND_ACCOUNT'
-      payload: { email: string; password: string; displayName?: string }
+      payload: { email: string; password: string; displayName: string }
     }
   | {
       // 登录后端账号
