@@ -5,11 +5,15 @@ import { STORAGE_KEYS } from '../../shared/constants/storageKeys'
 import type { BackendAccount } from '../../shared/types/auth'
 import type { CloudSyncState, CloudUploadPreview } from '../../shared/types/sync'
 import type {
+  AuthMessageResult,
+  AuthSessionResult,
   BackendAccountResult,
   BackendConfigResult,
   CloudUploadPreviewResult,
   CloudSyncResult,
+  DeleteAccountResult,
   TranslationPreferencesResult,
+  VerificationStatusResult,
   TranslationProviderStatusResult
 } from '../../shared/types/message'
 import {
@@ -38,6 +42,19 @@ export const useSettingsState = (options?: { autoRefresh?: boolean; autoSync?: b
   const primaryProviderStatus = computed(() => {
     return providerStatuses.value.find((provider) => provider.provider === translationPreferences.value.defaultProvider) ?? null
   })
+
+  const applyVerificationStatus = (status: VerificationStatusResult) => {
+    if (!currentAccount.value) {
+      return
+    }
+
+    currentAccount.value = {
+      ...currentAccount.value,
+      email: status.email || currentAccount.value.email,
+      emailVerified: status.emailVerified,
+      verificationStatus: status.verificationStatus
+    }
+  }
 
   const refreshProviderStatuses = async () => {
     const result = await sendMessageToBackground<TranslationProviderStatusResult>({
@@ -79,7 +96,7 @@ export const useSettingsState = (options?: { autoRefresh?: boolean; autoSync?: b
         }
       }
 
-      const [preferencesResult, providerStatusResult, accountResult, syncStateStored] = await Promise.all([
+      const [preferencesResult, providerStatusResult, accountResult, verificationStatusResult, syncStateStored] = await Promise.all([
         sendMessageToBackground<TranslationPreferencesResult>({
           type: MESSAGE_TYPES.GET_TRANSLATION_PREFERENCES,
           payload: {}
@@ -94,6 +111,12 @@ export const useSettingsState = (options?: { autoRefresh?: boolean; autoSync?: b
             payload: {}
           })
           : Promise.resolve({ ok: true as const, data: { account: null } }),
+        backendConfigResult.data.config.authState === 'authenticated'
+          ? sendMessageToBackground<VerificationStatusResult>({
+            type: MESSAGE_TYPES.GET_ACCOUNT_VERIFICATION_STATUS,
+            payload: {}
+          })
+          : Promise.resolve(null),
         browser.storage.local.get(STORAGE_KEYS.cloudSyncState)
       ])
 
@@ -109,9 +132,16 @@ export const useSettingsState = (options?: { autoRefresh?: boolean; autoSync?: b
         throw new Error(accountResult.error)
       }
 
+      if (verificationStatusResult && !verificationStatusResult.ok) {
+        throw new Error(verificationStatusResult.error)
+      }
+
       translationPreferences.value = preferencesResult.data.preferences
       providerStatuses.value = providerStatusResult.data.providers
       currentAccount.value = accountResult.data.account
+      if (verificationStatusResult?.ok) {
+        applyVerificationStatus(verificationStatusResult.data)
+      }
       cloudSyncState.value =
         (syncStateStored[STORAGE_KEYS.cloudSyncState] as CloudSyncState | undefined) ?? cloudSyncState.value
     } catch (error) {
@@ -234,7 +264,7 @@ export const useSettingsState = (options?: { autoRefresh?: boolean; autoSync?: b
     errorMessage.value = ''
 
     try {
-      const result = await sendMessageToBackground<{ account: BackendAccount; config: BackendConfig }>({
+      const result = await sendMessageToBackground<AuthSessionResult>({
         type: MESSAGE_TYPES.REGISTER_BACKEND_ACCOUNT,
         payload
       })
@@ -246,8 +276,10 @@ export const useSettingsState = (options?: { autoRefresh?: boolean; autoSync?: b
       backendConfig.value = result.data.config
       currentAccount.value = result.data.account
       await refresh()
+      return result.data
     } catch (error) {
       errorMessage.value = error instanceof Error ? error.message : '注册失败'
+      return null
     } finally {
       isSaving.value = false
     }
@@ -258,7 +290,7 @@ export const useSettingsState = (options?: { autoRefresh?: boolean; autoSync?: b
     errorMessage.value = ''
 
     try {
-      const result = await sendMessageToBackground<{ account: BackendAccount; config: BackendConfig }>({
+      const result = await sendMessageToBackground<AuthSessionResult>({
         type: MESSAGE_TYPES.LOGIN_BACKEND_ACCOUNT,
         payload
       })
@@ -270,8 +302,10 @@ export const useSettingsState = (options?: { autoRefresh?: boolean; autoSync?: b
       backendConfig.value = result.data.config
       currentAccount.value = result.data.account
       await refresh()
+      return result.data
     } catch (error) {
       errorMessage.value = error instanceof Error ? error.message : '登录失败'
+      return null
     } finally {
       isSaving.value = false
     }
@@ -295,6 +329,79 @@ export const useSettingsState = (options?: { autoRefresh?: boolean; autoSync?: b
       await refresh()
     } catch (error) {
       errorMessage.value = error instanceof Error ? error.message : '退出登录失败'
+    } finally {
+      isSaving.value = false
+    }
+  }
+
+  const deleteAccount = async (payload: { confirmEmail: string; deleteLocalData: boolean }) => {
+    isSaving.value = true
+    errorMessage.value = ''
+
+    try {
+      const result = await sendMessageToBackground<DeleteAccountResult>({
+        type: MESSAGE_TYPES.DELETE_BACKEND_ACCOUNT,
+        payload
+      })
+
+      if (!result.ok) {
+        throw new Error(result.error)
+      }
+
+      if (!result.data.success) {
+        throw new Error(result.data.message || '注销账号失败')
+      }
+
+      backendConfig.value = {
+        ...DEFAULT_BACKEND_CONFIG,
+        baseUrl: backendConfig.value.baseUrl || DEFAULT_BACKEND_CONFIG.baseUrl
+      }
+      currentAccount.value = null
+      cloudSyncState.value = null
+      await refresh()
+
+      return result.data
+    } catch (error) {
+      errorMessage.value = error instanceof Error ? error.message : '注销账号失败'
+      throw error
+    } finally {
+      isSaving.value = false
+    }
+  }
+
+  const sendVerificationEmail = async (email?: string) => {
+    isSaving.value = true
+    errorMessage.value = ''
+
+    try {
+      const targetEmail = (email ?? currentAccount.value?.email ?? '').trim()
+      if (!targetEmail) {
+        throw new Error('当前账号未绑定邮箱')
+      }
+
+      const result = await sendMessageToBackground<AuthMessageResult>({
+        type: MESSAGE_TYPES.SEND_VERIFICATION_EMAIL,
+        payload: { email: targetEmail }
+      })
+
+      if (!result.ok) {
+        throw new Error(result.error)
+      }
+
+      const verificationStatusResult = await sendMessageToBackground<VerificationStatusResult>({
+        type: MESSAGE_TYPES.GET_ACCOUNT_VERIFICATION_STATUS,
+        payload: {}
+      })
+
+      if (!verificationStatusResult.ok) {
+        throw new Error(verificationStatusResult.error)
+      }
+
+      applyVerificationStatus(verificationStatusResult.data)
+      return result.data.message
+    } catch (error) {
+      errorMessage.value = error instanceof Error ? error.message : '发送验证邮件失败'
+      throw error
     } finally {
       isSaving.value = false
     }
@@ -409,6 +516,8 @@ export const useSettingsState = (options?: { autoRefresh?: boolean; autoSync?: b
     registerAccount,
     loginAccount,
     logoutAccount,
+    deleteAccount,
+    sendVerificationEmail,
     syncCloud,
     clearError
   }

@@ -1,18 +1,22 @@
 import browser from 'webextension-polyfill'
-import { exportAnnotationBundle, importAnnotationBundle } from '../annotations/repository/annotationRepository'
+import { clearAllAnnotations, exportAnnotationBundle, importAnnotationBundle } from '../annotations/repository/annotationRepository'
 import {
+  deleteBackendAccount,
+  getBackendAccountVerificationStatus,
   getCloudAnnotationBundle,
   getCurrentBackendAccount,
   loginBackendAccount,
   logoutBackendAccount,
   registerBackendAccount,
   replaceCloudAnnotationBundle,
+  sendBackendVerificationEmail,
   withBackendRefresh
 } from '../translation/backendClient'
 import { getBackendConfig, saveBackendConfig } from '../translation/backendConfigRepository'
 import { STORAGE_KEYS } from '../../shared/constants/storageKeys'
 import type { ExportBundle, PageAnnotationBucket } from '../../shared/types/annotation'
 import type { BackendAccount } from '../../shared/types/auth'
+import type { DeleteAccountResult, VerificationStatusResult } from '../../shared/types/message'
 import type { CloudSyncState, CloudUploadPreview } from '../../shared/types/sync'
 import { DEFAULT_BACKEND_CONFIG, type BackendConfig } from '../../shared/types/translation'
 import { getPageKey } from '../../shared/utils/pageKey'
@@ -88,7 +92,7 @@ export const registerCloudAccount = async (payload: { email: string; password: s
   const session = await registerBackendAccount(currentConfig, payload)
   const nextConfig = buildAuthenticatedConfig(currentConfig, session.accessToken, session.refreshToken)
   await saveBackendConfig(nextConfig)
-  return { account: session.user, config: nextConfig }
+  return { account: session.user, config: nextConfig, message: session.message }
 }
 
 export const loginCloudAccount = async (payload: { email: string; password: string }) => {
@@ -97,6 +101,14 @@ export const loginCloudAccount = async (payload: { email: string; password: stri
   const nextConfig = buildAuthenticatedConfig(currentConfig, session.accessToken, session.refreshToken)
   await saveBackendConfig(nextConfig)
   return { account: session.user, config: nextConfig }
+}
+
+const clearDeletedAccountLocalState = async (deleteLocalData: boolean) => {
+  await browser.storage.local.remove(STORAGE_KEYS.cloudSyncState)
+
+  if (deleteLocalData) {
+    await clearAllAnnotations()
+  }
 }
 
 export const loadCloudAccount = async (): Promise<BackendAccount | null> => {
@@ -131,6 +143,57 @@ export const logoutCloudAccount = async () => {
     baseUrl: currentConfig.baseUrl || DEFAULT_BACKEND_CONFIG.baseUrl
   }
   await saveBackendConfig(nextConfig)
+}
+
+export const deleteCloudAccount = async (payload: { confirmEmail: string; deleteLocalData: boolean }) => {
+  const currentConfig = await getBackendConfig()
+
+  if (currentConfig.authState !== 'authenticated' || !currentConfig.accessToken) {
+    throw new Error('请先登录后再注销账号')
+  }
+
+  const result = await withBackendRefresh(currentConfig, saveBackendConfig, async (activeConfig) => {
+    return deleteBackendAccount(activeConfig, { confirmEmail: payload.confirmEmail })
+  })
+
+  await clearDeletedAccountLocalState(payload.deleteLocalData)
+
+  const nextConfig: BackendConfig = {
+    ...currentConfig,
+    ...DEFAULT_BACKEND_CONFIG,
+    baseUrl: currentConfig.baseUrl || DEFAULT_BACKEND_CONFIG.baseUrl
+  }
+  await saveBackendConfig(nextConfig)
+
+  return result.data satisfies DeleteAccountResult
+}
+
+export const getCloudVerificationStatus = async (): Promise<VerificationStatusResult> => {
+  const currentConfig = await getBackendConfig()
+
+  if (currentConfig.authState !== 'authenticated' || !currentConfig.accessToken) {
+    throw new Error('请先登录后再查看邮箱验证状态')
+  }
+
+  const result = await withBackendRefresh(currentConfig, saveBackendConfig, async (activeConfig) => {
+    return getBackendAccountVerificationStatus(activeConfig)
+  })
+
+  return result.data
+}
+
+export const sendCloudVerificationEmail = async (email: string): Promise<string> => {
+  const currentConfig = await getBackendConfig()
+
+  if (currentConfig.authState !== 'authenticated' || !currentConfig.accessToken) {
+    throw new Error('请先登录后再发送验证邮件')
+  }
+
+  const result = await withBackendRefresh(currentConfig, saveBackendConfig, async (activeConfig) => {
+    return sendBackendVerificationEmail(activeConfig, { email })
+  })
+
+  return result.data.message
 }
 
 export const pullCloudState = async (): Promise<CloudSyncState> => {

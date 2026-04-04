@@ -120,6 +120,10 @@ export const clearPageAnnotations = async (url: string) => {
   await writeBucketMap(bucketMap)
 }
 
+export const clearAllAnnotations = async () => {
+  await writeBucketMap({})
+}
+
 export const removeAnnotationsByIds = async (url: string, annotationIds: string[]) => {
   if (annotationIds.length === 0) {
     return null

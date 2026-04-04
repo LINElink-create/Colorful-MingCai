@@ -9,12 +9,15 @@ import { clearPageAnnotations, exportAnnotationBundle, getPageBucket, removeAnno
 import { downloadTextFile } from '../browser/downloads'
 import {
   confirmCloudUpload,
+  deleteCloudAccount,
+  getCloudVerificationStatus,
   loginCloudAccount,
   loadCloudAccount,
   logoutCloudAccount,
   previewCloudUpload,
   pullCloudState,
   registerCloudAccount,
+  sendCloudVerificationEmail,
   syncCloudState,
 } from '../cloud/cloudAccountService'
 import { EXPORT_FORMATS } from '../../shared/constants/exportFormats'
@@ -255,7 +258,7 @@ export const routeRuntimeMessage = async (message: RuntimeMessage, context: Rout
       }
       case MESSAGE_TYPES.REGISTER_BACKEND_ACCOUNT: {
         const result = await registerCloudAccount(message.payload)
-        return createOk({ account: result.account, config: result.config })
+        return createOk({ account: result.account, config: result.config, message: result.message })
       }
       case MESSAGE_TYPES.LOGIN_BACKEND_ACCOUNT: {
         const result = await loginCloudAccount(message.payload)
@@ -265,9 +268,21 @@ export const routeRuntimeMessage = async (message: RuntimeMessage, context: Rout
         await logoutCloudAccount()
         return createOk(undefined)
       }
+      case MESSAGE_TYPES.DELETE_BACKEND_ACCOUNT: {
+        const result = await deleteCloudAccount(message.payload)
+        return createOk(result)
+      }
       case MESSAGE_TYPES.GET_BACKEND_ACCOUNT: {
         const account = await loadCloudAccount()
         return createOk({ account })
+      }
+      case MESSAGE_TYPES.GET_ACCOUNT_VERIFICATION_STATUS: {
+        const result = await getCloudVerificationStatus()
+        return createOk(result)
+      }
+      case MESSAGE_TYPES.SEND_VERIFICATION_EMAIL: {
+        const messageText = await sendCloudVerificationEmail(message.payload.email)
+        return createOk({ message: messageText })
       }
       case MESSAGE_TYPES.PULL_CLOUD_STATE: {
         const result = await pullCloudState()

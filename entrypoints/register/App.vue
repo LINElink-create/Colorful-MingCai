@@ -29,17 +29,19 @@ const submitRegister = async () => {
     return
   }
 
-  await registerAccount({
+  const result = await registerAccount({
     email: email.value,
     password: password.value,
     displayName: displayName.value
   })
 
-  if (!errorMessage.value) {
-    successMessage.value = '注册成功，正在返回设置页…'
+  if (result && !errorMessage.value) {
+    successMessage.value = result.message
+      ? `${result.message}，正在返回设置页…`
+      : '注册成功，正在返回设置页…'
     window.setTimeout(() => {
       window.location.href = browser.runtime.getURL('/settings.html')
-    }, 500)
+    }, 1200)
   }
 }
 
@@ -98,7 +100,7 @@ const pageTitle = computed(() => {
         </label>
         <div class="register-actions">
           <button class="primary-btn" type="submit" :disabled="isLoading || isSaving">
-            {{ isSaving ? '注册中…' : '注册并登录' }}
+            {{ isSaving ? '注册中…' : '注册并发送验证邮件' }}
           </button>
           <button class="secondary-btn" type="button" :disabled="isLoading || isSaving" @click="goBackToSettings">
             取消
