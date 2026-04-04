@@ -4,6 +4,10 @@ node_modules/
 dist/
 coverage/
 *.log
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
 .env
 .env.local
 backend/.env
