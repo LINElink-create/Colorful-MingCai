@@ -69,6 +69,19 @@ npm install
 npm run dev
 ```
 
+如果你需要把扩展临时切到本地或测试后端，只需要在项目根目录创建 `.env.local`，写入：
+
+```bash
+VITE_BACKEND_BASE_URL=http://127.0.0.1:8000
+```
+
+说明：
+
+- `.env.local` 只用于你的本机，不会提交到仓库
+- `npm run dev` 和 `npm run build` 都会读取这个文件
+- 删除 `.env.local` 后会自动回退到生产后端 `https://www.mingcai-colorful.top`
+- 扩展界面仍然不会暴露后端地址；切换是开发者构建时行为，不是运行时设置
+
 说明：
 
 - WXT 会启动扩展开发流程并生成临时构建产物
@@ -92,6 +105,15 @@ npm run test:unit
 - `npm run zip`：打包扩展发布压缩包
 - `npm run typecheck`：执行 TypeScript 类型检查
 - `npm run test:unit`：运行 Vitest 单元测试
+
+如果你在本地联调后端，推荐流程是：
+
+1. 在根目录创建或修改 `.env.local`
+2. 把 `VITE_BACKEND_BASE_URL` 指向你的目标后端
+3. 执行 `npm run dev` 或 `npm run build`
+4. 在浏览器扩展页重新加载当前扩展
+
+这样以后切换后端地址不需要再改业务源码。
 
 ## 构建产物
 

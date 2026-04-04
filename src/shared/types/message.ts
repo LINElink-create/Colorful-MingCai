@@ -1,6 +1,6 @@
 import type { ExportFormat } from '../constants/exportFormats'
 import type { AnnotationColor, ExportBundle, PageAnnotationBucket } from './annotation'
-import type { BackendAccount } from './auth'
+import type { BackendAccount, VerificationStatus } from './auth'
 import type { CloudSyncState, CloudUploadPreview } from './sync'
 import type {
   BackendConfig,
@@ -92,6 +92,11 @@ export type RuntimeMessage =
       // 登出后端账号
       type: 'LOGOUT_BACKEND_ACCOUNT'
       payload: Record<string, never>
+    }
+  | {
+      // 永久删除后端账号，并可选清理本地高亮数据
+      type: 'DELETE_BACKEND_ACCOUNT'
+      payload: { confirmEmail: string; deleteLocalData: boolean }
     }
   | {
       // 获取当前后端账号
@@ -192,8 +197,25 @@ export type BackendAccountResult = {
   account: BackendAccount | null
 }
 
+export type AuthSessionResult = {
+  account: BackendAccount
+  config: BackendConfig
+  message?: string
+}
+
+export type AuthMessageResult = {
+  message: string
+}
+
+export type DeleteAccountResult = {
+  success: boolean
+  message: string
+}
+
 export type VerificationStatusResult = {
-  account: BackendAccount | null
+  email: string
+  emailVerified: boolean
+  verificationStatus: VerificationStatus
 }
 
 export type CloudSyncResult = CloudSyncState

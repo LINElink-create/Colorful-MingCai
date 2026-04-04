@@ -48,6 +48,7 @@ class AuthSessionOut(CamelModel):
     refresh_token: str
     expires_in: int
     user: AuthUserOut
+    message: Optional[str] = None
 
 
 class AuthMessageOut(CamelModel):

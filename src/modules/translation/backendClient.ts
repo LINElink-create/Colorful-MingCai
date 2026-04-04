@@ -1,5 +1,10 @@
 import type { ExportBundle } from '../../shared/types/annotation'
 import type { BackendAccount, BackendAuthSession } from '../../shared/types/auth'
+import type {
+  AuthMessageResult,
+  DeleteAccountResult,
+  VerificationStatusResult
+} from '../../shared/types/message'
 import type { TranslationPreferencesSnapshot } from '../../shared/types/sync'
 import {
   type BackendConfig,
@@ -65,6 +70,10 @@ const mapKnownBackendMessage = (message: string, status: number, path: string) =
 
   if (path === '/v1/auth/login' && message.includes('邮箱或密码错误')) {
     return '邮箱或密码错误'
+  }
+
+  if (path === '/v1/account/delete' && message.includes('确认邮箱不匹配')) {
+    return '确认邮箱不匹配'
   }
 
   if (status >= 500) {
@@ -334,6 +343,34 @@ export const logoutBackendAccount = async (config: BackendConfig) => {
     method: 'POST',
     fallbackMessage: '退出登录失败',
     body: {}
+  })
+}
+
+export const deleteBackendAccount = async (
+  config: BackendConfig,
+  payload: { confirmEmail: string }
+) => {
+  return requestJson<DeleteAccountResult>('/v1/account/delete', config, {
+    method: 'POST',
+    fallbackMessage: '注销账号失败',
+    body: payload
+  })
+}
+
+export const getBackendAccountVerificationStatus = async (config: BackendConfig) => {
+  return requestJson<VerificationStatusResult>('/v1/auth/verification/status', config, {
+    fallbackMessage: '获取邮箱验证状态失败'
+  })
+}
+
+export const sendBackendVerificationEmail = async (
+  config: BackendConfig,
+  payload: { email: string }
+) => {
+  return requestJson<AuthMessageResult>('/v1/auth/verification/send', config, {
+    method: 'POST',
+    fallbackMessage: '发送验证邮件失败',
+    body: payload
   })
 }
 

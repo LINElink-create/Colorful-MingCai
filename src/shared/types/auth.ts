@@ -15,4 +15,5 @@ export type BackendAuthSession = {
   refreshToken: string
   expiresIn: number
   user: BackendAccount
+  message?: string
 }

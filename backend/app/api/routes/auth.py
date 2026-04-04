@@ -82,19 +82,16 @@ def get_verification_status(
 @router.post("/verification/send", response_model=AuthMessageOut, status_code=status.HTTP_202_ACCEPTED)
 def send_verification_email(
     payload: SendVerificationEmailRequest,
+    current_user: User = Depends(get_current_user),
+    service: AuthenticationService = Depends(get_auth_service),
 ) -> AuthMessageOut:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail=f"邮箱验证发信框架已预留，待接入 SMTP 服务: {payload.email}",
-    )
+    return AuthMessageOut(message=service.send_verification_email(current_user, payload.email))
 
 
 @router.post("/verification/verify", response_model=AuthMessageOut)
 def verify_email_token(
     payload: VerifyEmailTokenRequest,
+    service: AuthenticationService = Depends(get_auth_service),
 ) -> AuthMessageOut:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail=f"邮箱验证确认框架已预留，待接入令牌核验: {payload.token[:8]}...",
-    )
+    return AuthMessageOut(message=service.verify_email_token(payload.token))
 

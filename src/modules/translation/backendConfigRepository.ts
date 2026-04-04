@@ -1,8 +1,8 @@
 import browser from 'webextension-polyfill'
 import { STORAGE_KEYS } from '../../shared/constants/storageKeys'
-import { DEFAULT_BACKEND_CONFIG, type BackendConfig } from '../../shared/types/translation'
+import { DEFAULT_BACKEND_BASE_URL, DEFAULT_BACKEND_CONFIG, type BackendConfig } from '../../shared/types/translation'
 
-const LOCKED_BACKEND_BASE_URL = DEFAULT_BACKEND_CONFIG.baseUrl
+const LOCKED_BACKEND_BASE_URL = DEFAULT_BACKEND_BASE_URL
 
 const sanitizeBackendConfig = (config: Partial<BackendConfig>): BackendConfig => ({
   baseUrl: LOCKED_BACKEND_BASE_URL,
