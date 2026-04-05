@@ -9,9 +9,10 @@ export default defineConfig({
   outDir: '.output',
   modules: ['@wxt-dev/module-vue'],
   manifest: {
-    name: '明彩',
-    description: '网页划词高亮与导出插件',
+    name: '__MSG_extensionName__',
+    description: '__MSG_extensionDescription__',
     version: '0.1.3',
+    default_locale: 'zh_CN',
     icons: {
       16: '/icon/mingcai_icon_16.png',
       32: '/icon/mingcai_icon_32.png',
@@ -19,6 +20,7 @@ export default defineConfig({
       128: '/icon/mingcai_icon_128.png'
     },
     action: {
+      default_title: '__MSG_actionTitle__',
       default_icon: {
         16: '/icon/mingcai_icon_16.png',
         32: '/icon/mingcai_icon_32.png',

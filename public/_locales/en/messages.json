@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "Colorful Reader",
+    "description": "Extension name"
+  },
+  "extensionDescription": {
+    "message": "Highlight, annotate, and export selected web text.",
+    "description": "Extension description"
+  },
+  "actionTitle": {
+    "message": "Colorful Reader",
+    "description": "Browser action title"
+  }
+}
