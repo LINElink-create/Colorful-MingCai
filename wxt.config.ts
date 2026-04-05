@@ -10,8 +10,21 @@ export default defineConfig({
   modules: ['@wxt-dev/module-vue'],
   manifest: {
     name: '明彩',
-    description: '网页划词高亮与导出插件 MVP',
-    version: '0.1.2',
+    description: '网页划词高亮与导出插件',
+    version: '0.1.3',
+    icons: {
+      16: '/icon/mingcai_icon_16.png',
+      32: '/icon/mingcai_icon_32.png',
+      48: '/icon/mingcai_icon_48.png',
+      128: '/icon/mingcai_icon_128.png'
+    },
+    action: {
+      default_icon: {
+        16: '/icon/mingcai_icon_16.png',
+        32: '/icon/mingcai_icon_32.png',
+        48: '/icon/mingcai_icon_48.png'
+      }
+    },
     // 需要的权限列表，声明插件需要访问的浏览器功能和数据
     permissions: ['storage', 'contextMenus', 'downloads', 'activeTab', 'tabs'],
     // 声明插件需要访问的主机权限，这里允许访问所有 HTTP 和 HTTPS 网站
