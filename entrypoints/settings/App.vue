@@ -339,6 +339,25 @@ const openRegisterPage = () => {
           <div class="about-row">
             <span>项目</span><strong>明彩 · Colorful Reader</strong>
           </div>
+          <div class="about-row">
+            <span>联系方式</span>
+            <strong>
+              <a class="about-link" href="mailto:ru49203@163.com">ru49203@163.com</a>
+            </strong>
+          </div>
+          <div class="about-row about-row--stacked">
+            <span>GitHub 仓库</span>
+            <strong>
+              <a
+                class="about-link"
+                href="https://github.com/LINElink-create/Colorful-MingCai"
+                target="_blank"
+                rel="noreferrer"
+              >
+                github.com/LINElink-create/Colorful-MingCai
+              </a>
+            </strong>
+          </div>
           <p class="section-desc" style="margin-top:10px">
             有问题或建议？欢迎到 GitHub 提交 Issue。
           </p>
@@ -654,13 +673,34 @@ const openRegisterPage = () => {
   font-size: 13px;
 }
 
+.about-row--stacked {
+  align-items: flex-start;
+}
+
+.about-row--stacked strong {
+  max-width: 62%;
+  text-align: right;
+  word-break: break-all;
+}
+
 .about-row span { color: var(--mc-muted, #64748b); }
 .about-row strong { color: var(--mc-ink, #1a1a2e); font-weight: 500; }
+
+.about-link {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.about-link:hover {
+  text-decoration: underline;
+}
 
 @media (max-width: 800px) {
   .settings-shell { padding: 16px; }
   .settings-grid { grid-template-columns: 1fr; }
   .settings-header { flex-direction: column; }
   .verification-panel { flex-direction: column; align-items: flex-start; }
+  .about-row--stacked { flex-direction: column; gap: 6px; }
+  .about-row--stacked strong { max-width: 100%; text-align: left; }
 }
 </style>
