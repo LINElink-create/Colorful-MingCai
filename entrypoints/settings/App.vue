@@ -700,7 +700,10 @@ const openRegisterPage = () => {
   .settings-grid { grid-template-columns: 1fr; }
   .settings-header { flex-direction: column; }
   .verification-panel { flex-direction: column; align-items: flex-start; }
+<<<<<<< HEAD
   .about-row--stacked { flex-direction: column; gap: 6px; }
   .about-row--stacked strong { max-width: 100%; text-align: left; }
+=======
+>>>>>>> 2d5a6fe491b7392532dff23008283cabe5271482
 }
 </style>
