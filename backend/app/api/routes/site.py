@@ -1,24 +1,26 @@
 from __future__ import annotations
 
+from html import escape
 from pathlib import Path
 from typing import Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from app.api.deps import get_auth_service
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 from app.services.authentication_service import AuthenticationService
 
 router = APIRouter(include_in_schema=False)
 
 static_dir = Path(__file__).resolve().parents[2] / "static"
 index_file = static_dir / "index.html"
+index_template = index_file.read_text(encoding="utf-8")
 
 
-@router.get("/", response_class=FileResponse)
-def get_site_homepage() -> FileResponse:
-    return FileResponse(index_file)
+@router.get("/", response_class=HTMLResponse)
+def get_site_homepage() -> HTMLResponse:
+    return HTMLResponse(content=_build_site_homepage(get_settings()))
 
 
 @router.get("/beian")
@@ -43,6 +45,53 @@ def verify_email_from_link(
 @router.get("/verify-email/success", response_class=HTMLResponse)
 def get_verify_email_success_page() -> HTMLResponse:
     return HTMLResponse(content=_build_verification_page(True, "邮箱验证成功，现在可以返回扩展继续使用云同步。"))
+
+
+def _build_site_homepage(settings: Settings) -> str:
+    return index_template.replace("{{SITE_BEIAN_SECTION}}", _build_beian_section(settings))
+
+
+def _build_beian_section(settings: Settings) -> str:
+    links: list[str] = []
+
+    icp_record = settings.site_icp_record.strip()
+    if icp_record:
+        links.append(_build_beian_link(icp_record, settings.site_icp_url.strip()))
+
+    public_security_record = settings.site_public_security_record.strip()
+    if public_security_record:
+        icon_markup = ""
+        icon_path = settings.site_public_security_icon_path.strip()
+        if icon_path:
+            icon_markup = (
+                f'<img src="{escape(icon_path, quote=True)}" alt="" width="18" height="18">'
+            )
+
+        links.append(
+            _build_beian_link(
+                public_security_record,
+                settings.site_public_security_url.strip(),
+                prefix_html=icon_markup,
+            )
+        )
+
+    if not links:
+        return ""
+
+    links_markup = "\n          ".join(links)
+    return f"""
+        <div class=\"footer-beian\">
+          {links_markup}
+        </div>"""
+
+
+def _build_beian_link(text: str, href: str, prefix_html: str = "") -> str:
+    content = f"{prefix_html}<span>{escape(text)}</span>" if prefix_html else escape(text)
+    if not href:
+        return f"<span>{content}</span>"
+
+    safe_href = escape(href, quote=True)
+    return f'<a href="{safe_href}" target="_blank" rel="noreferrer">{content}</a>'
 
 
 def _build_verification_page(success: bool, message: str) -> str:
