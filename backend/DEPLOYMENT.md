@@ -46,6 +46,11 @@ PLATFORM_YOUDAO_APP_KEY=
 PLATFORM_YOUDAO_APP_SECRET=
 PLATFORM_REQUESTS_PER_MINUTE=30
 PLATFORM_DAILY_LIMIT=5000
+SITE_ICP_RECORD=
+SITE_ICP_URL=https://beian.miit.gov.cn/
+SITE_PUBLIC_SECURITY_RECORD=
+SITE_PUBLIC_SECURITY_URL=
+SITE_PUBLIC_SECURITY_ICON_PATH=/static/icon/备案图标.png
 GUNICORN_WORKERS=2
 GUNICORN_TIMEOUT=120
 GUNICORN_GRACEFUL_TIMEOUT=30
@@ -134,3 +139,4 @@ docker compose --env-file .env.production -f compose.server.yml up -d
 - 如果服务器前面有 Nginx 或 Caddy，应正确设置 `SERVER_PUBLIC_BASE_URL` 和 `TRUSTED_PROXIES`。
 - 如果你不想在容器内直接对外暴露 8000 端口，应让反向代理接入 compose 网络并隐藏宿主机端口映射。
 - 如果 MySQL 位于另一台服务器，部署失败时优先检查安全组、防火墙、数据库授权来源和 `MYSQL_HOST` 是否为内网地址。
+- 备案号现在支持通过 `.env.production` 注入，仓库中的首页模板不再保存真实备案信息；如需展示备案，只在服务器环境变量中填写 `SITE_ICP_RECORD`、`SITE_PUBLIC_SECURITY_RECORD` 等字段即可。

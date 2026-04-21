@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     auth_email_verification_token_ttl_hours: int = Field(default=24, alias="AUTH_EMAIL_VERIFICATION_TOKEN_TTL_HOURS")
     auth_email_verification_resend_cooldown_seconds: int = Field(default=300, alias="AUTH_EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS")
     auth_email_verification_success_path: str = Field(default="/verify-email/success", alias="AUTH_EMAIL_VERIFICATION_SUCCESS_PATH")
+    site_icp_record: str = Field(default="", alias="SITE_ICP_RECORD")
+    site_icp_url: str = Field(default="https://beian.miit.gov.cn/", alias="SITE_ICP_URL")
+    site_public_security_record: str = Field(default="", alias="SITE_PUBLIC_SECURITY_RECORD")
+    site_public_security_url: str = Field(default="", alias="SITE_PUBLIC_SECURITY_URL")
+    site_public_security_icon_path: str = Field(default="/static/icon/备案图标.png", alias="SITE_PUBLIC_SECURITY_ICON_PATH")
 
     @property
     def sqlalchemy_database_uri(self) -> str:

@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "明彩",
+    "description": "扩展名称"
+  },
+  "extensionDescription": {
+    "message": "网页划词高亮与导出插件",
+    "description": "扩展描述"
+  },
+  "actionTitle": {
+    "message": "明彩",
+    "description": "浏览器工具栏按钮标题"
+  }
+}
